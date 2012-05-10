@@ -1,0 +1,8 @@
+# Eclipse files #
+*.project
+*.settings
+*.classpath
+
+# Transaction folders #
+ObjectStore
+PutObjectStoreDirHere
