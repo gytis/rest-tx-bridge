@@ -17,44 +17,47 @@ import com.arjuna.ats.jta.xa.XATxConverter;
 public final class InboundBridgeManager {
     
     /**
-     * Base url of transaction bridge.
-     */
-    public static final String BASE_URL = "http://localhost:8080/rest-tx-bridge-test";
-    
-    /**
      * Mappings of rest transactions and inbound bridges.
-     * Map key is url of transaction.
+     * Map key is URL of transaction.
      */
-    private static final ConcurrentMap<String, InboundBridge> inboundBridgeMappings = new ConcurrentHashMap<String, InboundBridge>();
+    private static final ConcurrentMap<String, InboundBridge> inboundBridgeMappings =
+            new ConcurrentHashMap<String, InboundBridge>();
     
     /**
      * Mappings of participants and transactions.
-     * Map key is participant id and value is transaction url.
+     * Map key is participant id and value is transaction URL.
      * 
      * This mapping is required when transaction coordinator is communicating with participant.
      * When request to the participant is made only participant id is received,
-     * therefore we need to get transaction url.
+     * therefore we need to get transaction URL.
      */
-    private static final ConcurrentMap<String, String> participantMappings = new ConcurrentHashMap<String, String>();
+    private static final ConcurrentMap<String, String> participantMappings =
+            new ConcurrentHashMap<String, String>();
 
 
     /**
      * 
      * @param txUrl
+     * @param baseUrl
      * @return
      * @throws XAException
      * @throws SystemException
-     * @throws IllegalArgumentException
      */
-    public static InboundBridge getInboundBridge(String txUrl) throws XAException, SystemException {
+    public static InboundBridge getInboundBridge(String txUrl, String baseUrl)
+            throws XAException, SystemException {
+        
         System.out.println("InboundBridgeManager.getInboundBridge(txUrl=" + txUrl + ")");
         
         if (txUrl == null) {
             throw new IllegalArgumentException("Transaction URL is required");
         }
         
+        if (baseUrl == null) {
+            throw new IllegalArgumentException("Base URL is required");
+        }
+        
         if(!inboundBridgeMappings.containsKey(txUrl)) {
-            createInboundBridgeMapping(txUrl);
+            createInboundBridgeMapping(txUrl, baseUrl);
         }
 
         return inboundBridgeMappings.get(txUrl);
@@ -65,7 +68,6 @@ public final class InboundBridgeManager {
      * 
      * @param participantId
      * @return
-     * @throws IllegalArgumentException
      */
     public static synchronized String getParticipantTransaction(String participantId) {
         System.out.println("InboundBridgeManager.getParticipantTransaction(participantId=" + participantId + ")");
@@ -81,15 +83,16 @@ public final class InboundBridgeManager {
     /**
      * 
      * @param txUrl
-     * @throws IllegalArgumentException
+     * @throws SystemException
      */
-    public static synchronized void removeInboundBridgeMapping(String txUrl) {
+    public static synchronized void removeInboundBridgeMapping(String txUrl) throws SystemException {
         System.out.println("InboundBridgeManager.removeInboundBridgeMapping(txUrl=" + txUrl + ")");
         
         if (txUrl == null) {
             throw new IllegalArgumentException("Transaction URL is required");
         }
         
+        inboundBridgeMappings.get(txUrl).stop();
         inboundBridgeMappings.remove(txUrl);
     }
     
@@ -97,9 +100,11 @@ public final class InboundBridgeManager {
     /**
      * 
      * @param participantId
-     * @throws IllegalArgumentException
+     * @throws SystemException
      */
-    public static synchronized void removeParticipantMapping(String participantId) {
+    public static synchronized void removeParticipantMapping(String participantId)
+            throws SystemException {
+        
         System.out.println("InboundBridgeManager.removeParticipantMapping(participantId=" + participantId + ")");
         
         if (participantId == null) {
@@ -115,10 +120,13 @@ public final class InboundBridgeManager {
     /**
      * 
      * @param txUrl
+     * @param baseUrl
      * @throws XAException
      * @throws SystemException
      */
-    private static synchronized void createInboundBridgeMapping(String txUrl) throws XAException, SystemException {
+    private static synchronized void createInboundBridgeMapping(String txUrl,
+            String baseUrl) throws XAException, SystemException {
+        
         System.out.println("InboundBridgeManager.createMapping()");
 
         if (inboundBridgeMappings.containsKey(txUrl)) {
@@ -133,7 +141,7 @@ public final class InboundBridgeManager {
         String participantId = BridgeDurableParticipant.TYPE_IDENTIFIER
                 + new Uid().fileStringForm();
         
-        enlistParticipant(txUrl, participantId);
+        enlistParticipant(txUrl, participantId, baseUrl);
         InboundBridge bridge = new InboundBridge(xid);
         inboundBridgeMappings.put(txUrl, bridge);
     }
@@ -143,13 +151,22 @@ public final class InboundBridgeManager {
      * 
      * @param txUrl
      * @param participantId
+     * @param baseUrl
      */
-    private static synchronized void enlistParticipant(String txUrl, String participantId) {
+    private static synchronized void enlistParticipant(String txUrl,
+            String participantId, String baseUrl) {
+        
         System.out.println("InboundBridgeManager.enlistParticipant()");
         
-        String participantUrl = BASE_URL
+        if (!baseUrl.substring(baseUrl.length() - 1).equals("/")) {
+            baseUrl = baseUrl + "/";
+        }
+        
+        String participantUrl = baseUrl
                 + BridgeDurableParticipant.PARTICIPANT_SEGMENT
                 + "/" + participantId;
+        
+        System.out.println("Participant url: " + participantUrl);
         
         String pUrls = TxSupport.getParticipantUrls(participantUrl, participantUrl);
         new TxSupport().httpRequest(

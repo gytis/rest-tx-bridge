@@ -3,7 +3,7 @@
 	<servlet>
 		<servlet-name>Rest</servlet-name>
 		<servlet-class>
-			uk.ac.ncl.gt.resttxbridge.inbound.service.InboundBridgeService
+			uk.ac.ncl.gt.resttxbridge.inbound.service.TransactionalApplication
 		</servlet-class>
 	</servlet>
 	<servlet-mapping>

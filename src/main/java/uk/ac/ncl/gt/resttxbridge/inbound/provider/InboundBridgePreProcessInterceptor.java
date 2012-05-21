@@ -1,6 +1,7 @@
 package uk.ac.ncl.gt.resttxbridge.inbound.provider;
 
 import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.Provider;
 
 import org.jboss.resteasy.annotations.interception.ServerInterceptor;
@@ -19,7 +20,7 @@ import uk.ac.ncl.gt.resttxbridge.inbound.InboundBridgeManager;
 
 /**
  * 
- * @author gytis
+ * @author Gytis
  *
  * Provider class intercepts every request before method is executed.
  * If method is annotated with <code>Transactional</code> annotation,
@@ -39,38 +40,36 @@ public final class InboundBridgePreProcessInterceptor implements
 
         System.out.println("InboundBridgePreProcessInterceptor.preProcess()");
         
-        // TODO participant class should be annotated instead of methods
-        if (resourceMethod.getMethod().isAnnotationPresent(Participant.class)) {
+        String txUrl = null;
+        
+        if (resourceMethod.getMethod().getDeclaringClass().isAnnotationPresent(Participant.class)) {
             String participantId = Utils.getParticipantId(request);
-            String txUrl = Utils.getTransactionUrl(participantId);
-            
-            if (txUrl != null) {
-                startBridge(txUrl);
-            }
+            txUrl = Utils.getTransactionUrl(participantId);
             
         } else if (resourceMethod.getMethod().isAnnotationPresent(Transactional.class)) {
-            String txUrl = Utils.getTransactionUrl(request);
-            
-            // If transaction url is not provided - there is no transaction to map.
-            if (txUrl != null) {
-                startBridge(txUrl);
-            }
+            txUrl = Utils.getTransactionUrl(request);
         }
 
+        // If transaction URL is not provided - there is no transaction to map.
+        if (txUrl != null) {
+            startBridge(txUrl, request.getUri());
+        }
+        
         // Null allows intercepted method to be executed
         return null;
     }
 
 
     /**
-     * Starts inbound rest-tx to jta bridge.
+     * Starts REST-TX to JTA bridge.
      * @param txUrl
      */
-    private void startBridge(String txUrl) {
+    private void startBridge(String txUrl, UriInfo uriInfo) {
         System.out.println("InboundBridgePreProcessInterceptor.startBridge()");
         
         try {
-            InboundBridge bridge = InboundBridgeManager.getInboundBridge(txUrl);
+            InboundBridge bridge = InboundBridgeManager.getInboundBridge(txUrl,
+                    uriInfo.getBaseUri().toString());
             bridge.start();
         } catch (Exception e) {
             // TODO log exception

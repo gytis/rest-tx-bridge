@@ -1,6 +1,5 @@
 package uk.ac.ncl.gt.resttxbridge.inbound;
 
-import javax.transaction.InvalidTransactionException;
 import javax.transaction.Status;
 import javax.transaction.SystemException;
 import javax.transaction.Transaction;
@@ -21,44 +20,40 @@ public final class InboundBridge {
 
     public InboundBridge(Xid xid) throws XAException, SystemException {
         System.out.println("InboundBridge(xid=" + xid + ")");
-        
+
         this.xid = xid;
         getTransaction();
     }
 
 
     /**
-     * Associate the JTA transaction to the current Thread.
-     * Used by inbound bridge preprocess interceptor.
-     *
-     * @throws XAException
-     * @throws SystemException
-     * @throws IllegalStateException 
-     * @throws InvalidTransactionException
+     * Associate the JTA transaction to the current Thread. Used by inbound
+     * bridge preprocess interceptor.
+     * @throws Exception 
      */
-    public void start() throws XAException, SystemException,
-            InvalidTransactionException, IllegalStateException {
-        
+    public void start() throws Exception {
+
         System.out.println("InboundBridge.start()");
-        
+
         Transaction tx = getTransaction();
         TransactionManager.transactionManager().resume(tx);
+        
+        System.out.println(TransactionManager.transactionManager().getTransaction());
     }
-    
-    
+
+
     /**
-     * Disassociate the JTA transaction from the current Thread.
-     * Used by inbound bridge postprocess interceptor.
-     * 
+     * Disassociate the JTA transaction from the current Thread. Used by inbound
+     * bridge postprocess interceptor.
      * @throws SystemException
      */
-    public void stop() throws SystemException {
+    public void stop() throws SystemException  {
         System.out.println("InboundBridge.stop()");
-        
+
         TransactionManager.transactionManager().suspend();
     }
-    
-    
+
+
     /**
      * 
      * @return
@@ -66,30 +61,33 @@ public final class InboundBridge {
     public Xid getXid() {
         return xid;
     }
-    
-    
+
+
     /**
      * Get the JTA Transaction which corresponds to the Xid of the instance.
-     *
+     * 
      * @return
      * @throws XAException
      * @throws SystemException
      */
     private Transaction getTransaction() throws XAException, SystemException {
         System.out.println("InboundBridge.getTransaction()");
-        
-        Transaction tx = SubordinationManager.getTransactionImporter().importTransaction(xid);
+
+        Transaction tx = SubordinationManager.getTransactionImporter()
+                .importTransaction(xid);
+
+        System.out.println("Transaction status: " + tx.getStatus());
 
         switch (tx.getStatus()) {
-            // TODO: other cases?
-            case Status.STATUS_ACTIVE:
-            case Status.STATUS_MARKED_ROLLBACK:
-                break;
-            default:
-                throw new IllegalStateException("Transaction not in state ACTIVE");
+        // TODO: other cases?
+        case Status.STATUS_ACTIVE:
+        case Status.STATUS_MARKED_ROLLBACK:
+            break;
+        default:
+            throw new IllegalStateException("Transaction not in state ACTIVE");
         }
-        
+
         return tx;
     }
-    
+
 }

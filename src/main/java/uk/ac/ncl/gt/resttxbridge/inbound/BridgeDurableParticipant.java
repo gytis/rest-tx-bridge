@@ -25,27 +25,32 @@ import uk.ac.ncl.gt.resttxbridge.annotation.Participant;
 
 
 @Path(BridgeDurableParticipant.PARTICIPANT_SEGMENT + "/{participantId}")
+@Participant
 public final class BridgeDurableParticipant {
 
     /**
-     * Uniq String used to prefix ids at participant registration, so that the
+     * Unique String used to prefix IDs at participant registration, so that the
      * recovery module can identify relevant instances.
      */
     public static final String TYPE_IDENTIFIER = "RestTxBridgeDurableParticipant_";
 
     /**
-     * Uniq (well, hopefully) formatId so we can distinguish our own Xids.
+     * Unique (well, hopefully) formatId so we can distinguish our own Xids.
      * 
      * TODO it is taken from WS bridge so probably has to be changed.
      */
     public static final int XARESOURCE_FORMAT_ID = 131080;
 
     /**
-     * Participant url segment.
+     * Participant URL segment.
      */
-    public static final String PARTICIPANT_SEGMENT = "/participant-resource";
+    public static final String PARTICIPANT_SEGMENT = "participant-resource";
 
 
+    @Context
+    private UriInfo uriInfo;
+    
+    
     /**
      * Returns links to the participant terminator.
      * 
@@ -54,10 +59,8 @@ public final class BridgeDurableParticipant {
      * @return Link to the participant terminator.
      */
     @HEAD
-    @Participant
     public Response headParticipant(
-            @PathParam("participantId") String participantId,
-            @Context UriInfo uriInfo) {
+            @PathParam("participantId") String participantId) {
 
         System.out.println("BridgeDurableParticipant.headParticipant()");
 
@@ -78,7 +81,6 @@ public final class BridgeDurableParticipant {
      * @throws XAException 
      */
     @GET
-    @Participant
     public Response getStatus(@PathParam("participantId") String participantId) {
         System.out.println("BridgeDurableParticipant.getStatus()");
 
@@ -102,7 +104,6 @@ public final class BridgeDurableParticipant {
      * @throws XAException 
      */
     @PUT
-    @Participant
     public Response terminateParticipant(
             @PathParam("participantId") String participantId, String content) throws XAException, SystemException {
         
@@ -111,18 +112,19 @@ public final class BridgeDurableParticipant {
         // TODO check if transaction is active
         
         String txStatus = TxSupport.getStatus(content);
+        String responseStatus = null;
 
         if (TxSupport.isPrepare(txStatus)) {
             String status = prepare(participantId);
             
             if (TxSupport.isPrepare(status)) {
-                return Response.ok(TxSupport.toStatusContent(TxSupport.PREPARED)).build();
+                responseStatus = TxSupport.PREPARED;
                 
             } else if (TxSupport.isReadOnly(status)) {
-                return Response.ok(TxSupport.toStatusContent(TxSupport.READONLY)).build();
+                responseStatus = TxSupport.READONLY;
                 
             } else if (TxSupport.isAbort(status)) {
-                return Response.ok(TxSupport.toStatusContent(TxSupport.ABORTED)).build();
+                responseStatus = TxSupport.ABORTED;
                 
             } else {
                 throw new WebApplicationException(403);
@@ -130,23 +132,39 @@ public final class BridgeDurableParticipant {
             
         } else if (TxSupport.isCommit(txStatus)) {
             commit(participantId);
-            return Response.ok(TxSupport.toStatusContent(TxSupport.COMMITTED)).build();
+            responseStatus = TxSupport.COMMITTED;
             
         } else if (txStatus.equals(TxSupport.COMMITTED_ONE_PHASE)) {
-            commit(participantId);
-            return Response.ok(TxSupport.toStatusContent(TxSupport.COMMITTED)).build();
+            commitOnePhase(participantId);
+            responseStatus = TxSupport.COMMITTED;
             
         } else if (TxSupport.isAbort(txStatus)) {
             rollback(participantId);
-            return Response.ok(TxSupport.toStatusContent(TxSupport.ABORTED)).build();
+            responseStatus = TxSupport.ABORTED;
         }
 
-        return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).build();
+        if (responseStatus == null) {
+            return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).build();
+        } else {
+            return Response.ok(TxSupport.toStatusContent(responseStatus)).build();
+        }
     }
     
     
+    /**
+     * Prepares subordinate transaction.
+     * Returns one of the following statuses:
+     *      TxSupport.PREPARED
+     *      TxSupport.READONLY
+     *      TxSupport.ABORTED
+     * 
+     * @param participantId
+     * @return Transaction status
+     */
     private String prepare(String participantId) {
         System.out.println("BridgeDurableParticipant.prepare(participantId=" + participantId + ")");
+        
+        String responseStatus = TxSupport.ABORTED;
         
         try {
             Xid xid = getXid(participantId);
@@ -154,11 +172,10 @@ public final class BridgeDurableParticipant {
             
             int result = xaTerminator.prepare(xid);
             if (result == XAResource.XA_OK) {
-                return TxSupport.PREPARED;
+                responseStatus = TxSupport.PREPARED;
                 
             } else if (result == XAResource.XA_RDONLY) {
-                cleanup(participantId);
-                return TxSupport.READONLY;
+                responseStatus = TxSupport.READONLY;
             }
             
         } catch (Exception e) {
@@ -166,11 +183,19 @@ public final class BridgeDurableParticipant {
             e.printStackTrace();
         }
         
-        cleanup(participantId);
-        return TxSupport.ABORTED;
+        if (!TxSupport.isPrepare(responseStatus)) {
+            cleanup(participantId);
+        }
+        
+        return responseStatus;
     }
     
     
+    /**
+     * Commits subordinate transaction.
+     * 
+     * @param participantId
+     */
     private void commit(String participantId) {
         System.out.println("BridgeDurableParticipant.commit(participantId=" + participantId + ")");
         
@@ -180,8 +205,6 @@ public final class BridgeDurableParticipant {
             
             xaTerminator.commit(xid, false);
             
-            System.out.println("Participant <" + participantId + "> was commited");
-            
         } catch (Exception e) {
             // TODO log exception
             e.printStackTrace();
@@ -191,6 +214,36 @@ public final class BridgeDurableParticipant {
     }
     
     
+    /**
+     * Prepares and commits subordinate transaction.
+     * 
+     * @param participantId
+     */
+    private void commitOnePhase(String participantId) {
+        System.out.println("BridgeDurableParticipant.commitOnePhase(participantId=" + participantId + ")");
+        
+        try {
+            Xid xid = getXid(participantId);
+            XATerminator xaTerminator = SubordinationManager.getXATerminator();
+            
+            if (xaTerminator.prepare(xid) == XAResource.XA_OK) {
+                commit(participantId);
+            } else {
+                cleanup(participantId);
+            }
+            
+        } catch (Exception e) {
+            // TODO log exception
+            e.printStackTrace();
+            cleanup(participantId);
+        }
+    }
+    
+    
+    /**
+     * Rolls back subordinate transaction. 
+     * @param participantId
+     */
     private void rollback(String participantId) {
         System.out.println("BridgeDurableParticipant.rollback(participantId=" + participantId + ")");
         
@@ -200,8 +253,6 @@ public final class BridgeDurableParticipant {
             
             xaTerminator.rollback(xid);
             
-            System.out.println("Participant <" + participantId + "> was rolled back");
-            
         } catch (Exception e) {
             // TODO log exception
             e.printStackTrace();
@@ -211,16 +262,36 @@ public final class BridgeDurableParticipant {
     }
     
     
+    /**
+     * Cleans up references.
+     * 
+     * @param participantId
+     */
     private void cleanup(String participantId) {
         System.out.println("BridgeDurableParticipant.cleanup(participantId=" + participantId + ")");
         
-        InboundBridgeManager.removeParticipantMapping(participantId);
+        try {
+            InboundBridgeManager.removeParticipantMapping(participantId);
+        } catch (Exception e) {
+            // TODO log exception
+            e.printStackTrace();
+        }
     }
     
     
+    /**
+     * Returns Xid of the subordinate transaction which is mapped with
+     * given bridge durable participant.
+     * 
+     * @param participantId
+     * @return
+     * @throws XAException
+     * @throws SystemException
+     */
     private Xid getXid(String participantId) throws XAException, SystemException {
         String txUrl = InboundBridgeManager.getParticipantTransaction(participantId);
-        InboundBridge inboundBridge = InboundBridgeManager.getInboundBridge(txUrl);
+        InboundBridge inboundBridge = InboundBridgeManager.getInboundBridge(
+                txUrl, uriInfo.getBaseUri().toString());
         
         return inboundBridge.getXid();
     }
