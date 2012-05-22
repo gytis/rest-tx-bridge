@@ -76,12 +76,11 @@ public final class InboundBridge {
         Transaction tx = SubordinationManager.getTransactionImporter()
                 .importTransaction(xid);
 
-        System.out.println("Transaction status: " + tx.getStatus());
-
         switch (tx.getStatus()) {
         // TODO: other cases?
         case Status.STATUS_ACTIVE:
         case Status.STATUS_MARKED_ROLLBACK:
+        case Status.STATUS_COMMITTING:
             break;
         default:
             throw new IllegalStateException("Transaction not in state ACTIVE");
