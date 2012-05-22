@@ -30,7 +30,7 @@ public final class InboundBridgePostProcessInterceptor implements PostProcessInt
         
         String txUrl = null;
         
-        if (response.getResourceMethod().isAnnotationPresent(Participant.class)) {
+        if (response.getResourceMethod().getDeclaringClass().isAnnotationPresent(Participant.class)) {
             String participantId = Utils.getParticipantId(request);
             txUrl = Utils.getTransactionUrl(participantId);
             
