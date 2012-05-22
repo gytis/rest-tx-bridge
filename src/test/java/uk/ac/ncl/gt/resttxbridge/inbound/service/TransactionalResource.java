@@ -17,52 +17,53 @@ import com.arjuna.ats.jta.TransactionManager;
 import uk.ac.ncl.gt.resttxbridge.annotation.Transactional;
 import uk.ac.ncl.gt.resttxbridge.inbound.xa.LoggingXAResource;
 
-
+/**
+ * 
+ * @author Gytis Trikleris
+ * 
+ */
 @Path("/")
 public class TransactionalResource {
 
     LoggingXAResource loggingXAResource;
-    
-    
+
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public String getInvocations() {
         if (loggingXAResource == null) {
             throw new WebApplicationException(409);
         }
-        
+
         return new JSONArray(loggingXAResource.getInvocations()).toString();
     }
-    
-    
+
     @POST
     @Transactional
     public Response enlistXAResource() {
         System.out.println("TransactionalResource.enlistXAResource");
-        
+
         try {
             loggingXAResource = new LoggingXAResource();
-            
+
             Transaction t = TransactionManager.transactionManager().getTransaction();
             t.enlistResource(loggingXAResource);
-            
+
         } catch (Exception e) {
             e.printStackTrace();
-            
+
             return Response.serverError().build();
         }
-        
+
         return Response.ok().build();
     }
-    
-    
+
     @PUT
     public Response resetXAResource() {
         if (loggingXAResource != null) {
             loggingXAResource.resetInvocations();
         }
-        
+
         return Response.ok().build();
     }
-    
+
 }

@@ -23,7 +23,7 @@ import uk.ac.ncl.gt.resttxbridge.inbound.service.DummyParticipant;
 
 /**
  * 
- * @author Gytis Trikleris (gytist@gmail.com)
+ * @author Gytis Trikleris
  *
  */
 @RunWith(Arquillian.class)

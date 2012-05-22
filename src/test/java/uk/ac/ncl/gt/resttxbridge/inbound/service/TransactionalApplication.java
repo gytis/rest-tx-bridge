@@ -9,7 +9,11 @@ import uk.ac.ncl.gt.resttxbridge.inbound.BridgeDurableParticipant;
 import uk.ac.ncl.gt.resttxbridge.inbound.provider.InboundBridgePostProcessInterceptor;
 import uk.ac.ncl.gt.resttxbridge.inbound.provider.InboundBridgePreProcessInterceptor;
 
-
+/**
+ * 
+ * @author Gytis Trikleris
+ * 
+ */
 public final class TransactionalApplication extends Application {
 
     public Set<Class<?>> getClasses() {
@@ -19,7 +23,6 @@ public final class TransactionalApplication extends Application {
 
         return classes;
     }
-
 
     public Set<Object> getSingletons() {
         Set<Object> singletons = new HashSet<Object>();

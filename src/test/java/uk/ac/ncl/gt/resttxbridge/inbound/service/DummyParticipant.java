@@ -17,6 +17,11 @@ import javax.ws.rs.core.UriInfo;
 import org.hornetq.utils.json.JSONArray;
 import org.jboss.jbossts.star.util.TxSupport;
 
+/**
+ * 
+ * @author Gytis Trikleris
+ *
+ */
 @Path(DummyParticipant.PARTICIPANT_SEGMENT)
 public final class DummyParticipant {
 

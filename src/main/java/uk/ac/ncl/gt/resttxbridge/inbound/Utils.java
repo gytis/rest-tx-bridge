@@ -13,55 +13,54 @@ import org.jboss.resteasy.client.ClientRequest;
 import org.jboss.resteasy.client.ClientResponse;
 import org.jboss.resteasy.spi.HttpRequest;
 
+/**
+ * 
+ * @author Gytis Trikleris
+ * 
+ */
 public final class Utils {
 
     public static String LINK_REGEX = "<(.*?)>.*rel=\"(.*?)\"";
 
     public static Pattern LINK_PATTERN = Pattern.compile(LINK_REGEX);
-    
-    
+
     /**
      * Extracts participant id from http request.
      * 
      * @param request
-     * @return String participant id if path parameter <code>participantId</code>
-     * is set and null otherwise.
+     * @return String participant id if path parameter <code>participantId</code> is set and null otherwise.
      */
     public static String getParticipantId(HttpRequest request) {
         System.out.println("Utils.getParticipantId()");
-        
+
         if (request == null) {
             return null;
         }
-        
+
         return request.getUri().getPathParameters().get("participantId").get(0);
     }
-    
-    
+
     /**
      * Returns transaction id mapped with given participant.
      * 
      * @param participantId
-     * @return String transaction URL if participant has transaction mapped and
-     * null otherwise.
+     * @return String transaction URL if participant has transaction mapped and null otherwise.
      */
     public static String getTransactionUrl(String participantId) {
         System.out.println("Utils.getTransactionUrl(participantId=" + participantId + ")");
-        
+
         if (participantId == null) {
             return null;
         }
-        
+
         return InboundBridgeManager.getParticipantTransaction(participantId);
     }
-    
-    
+
     /**
      * Extracts transaction URL from HTTP request and returns it.
      * 
      * @param request
-     * @return String transaction URL for participants enlistment if required
-     * link exists and null otherwise.
+     * @return String transaction URL for participants enlistment if required link exists and null otherwise.
      */
     public static String getTransactionUrl(HttpRequest request) {
         System.out.println("Utils.getTransactionUrl()");
@@ -71,19 +70,17 @@ public final class Utils {
         }
 
         String transactionUrl = null;
-        Map<String, String> links = extractLinksFromHttpHeaders(
-                request.getHttpHeaders().getRequestHeaders());
-        
+        Map<String, String> links = extractLinksFromHttpHeaders(request.getHttpHeaders().getRequestHeaders());
+
         if (links.get(TxSupport.PARTICIPANT_LINK) != null) {
             transactionUrl = links.get(TxSupport.PARTICIPANT_LINK);
         } else if (links.get("coordinator") != null) {
             transactionUrl = getParticipantLink(links.get("coordinator"));
         }
-        
+
         return transactionUrl;
     }
-    
-    
+
     /**
      * Makes HEAD request to rest-tx coordinator and extracts participant enlistment link.
      * 
@@ -92,21 +89,20 @@ public final class Utils {
      */
     public static String getParticipantLink(String coordinatorLink) {
         System.out.println("Utils.getParticipantLink()");
-        
+
         String participantLink = null;
         try {
             ClientResponse<?> clientResponse = new ClientRequest(coordinatorLink).head();
-            
+
             participantLink = extractParticipantLinkFromHttpHeaders(clientResponse.getHeaders());
-            
+
         } catch (Exception e) {
             e.printStackTrace();
         }
-        
+
         return participantLink;
     }
-    
-    
+
     /**
      * Extracts participant enlistment link from HTTP headers.
      * 
@@ -115,35 +111,33 @@ public final class Utils {
      */
     public static String extractParticipantLinkFromHttpHeaders(MultivaluedMap<String, String> headers) {
         System.out.println("Utils.extractParticipantLinkFromHttpHeaders()");
-        
+
         String participantLink = null;
         Map<String, String> links = extractLinksFromHttpHeaders(headers);
-        
+
         if (links.get(TxSupport.PARTICIPANT_LINK) != null) {
             participantLink = links.get(TxSupport.PARTICIPANT_LINK);
         }
-        
+
         return participantLink;
     }
-    
-    
+
     /**
      * Extracts links from HTTP headers.
      * 
      * @param headers
-     * @return Map containing links. Map's key is link's relation
-     * and map's value is link's location.
+     * @return Map containing links. Map's key is link's relation and map's value is link's location.
      */
     public static Map<String, String> extractLinksFromHttpHeaders(MultivaluedMap<String, String> headers) {
         System.out.println("Utils.extractLinksFromHttpHeaders()");
-        
+
         Map<String, String> links = new HashMap<String, String>();
         List<String> linkHeaders = headers.get("link");
-        
+
         if (linkHeaders == null) {
             linkHeaders = headers.get("Link");
         }
-        
+
         if (linkHeaders != null) {
             for (String link : linkHeaders) {
                 String[] lhs = link.split(","); // links are separated by a comma
@@ -156,8 +150,8 @@ public final class Utils {
                 }
             }
         }
-        
+
         return links;
     }
-    
+
 }
