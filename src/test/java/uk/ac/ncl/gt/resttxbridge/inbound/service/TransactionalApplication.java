@@ -24,6 +24,7 @@ public final class TransactionalApplication extends Application {
     public Set<Object> getSingletons() {
         Set<Object> singletons = new HashSet<Object>();
 
+        singletons.add(new DummyParticipant());
         singletons.add(new TransactionalResource());
         singletons.add(new InboundBridgePreProcessInterceptor());
         singletons.add(new InboundBridgePostProcessInterceptor());
