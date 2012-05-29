@@ -37,20 +37,20 @@ public class InboundBridgeTest {
 
     @Deployment
     public static WebArchive createDeployment() {
-        WebArchive archive = ShrinkWrap
-                .create(WebArchive.class, "rest-tx-bridge-test.war")
+        MavenDependencyResolver resolver = DependencyResolvers.use(MavenDependencyResolver.class)
+                .includeDependenciesFromPom("pom.xml").scope("provided");
+
+        WebArchive archive = ShrinkWrap.create(WebArchive.class, "rest-tx-bridge-test.war")
+                .addAsWebInfResource(new File("src/test/webapp", "WEB-INF/web.xml"))
                 .addPackage("uk.ac.ncl.gt.resttxbridge.annotation")
                 .addPackage("uk.ac.ncl.gt.resttxbridge.inbound")
                 .addPackage("uk.ac.ncl.gt.resttxbridge.inbound.provider")
                 .addPackage("uk.ac.ncl.gt.resttxbridge.inbound.service")
                 .addPackage("uk.ac.ncl.gt.resttxbridge.inbound.xa")
-                .addAsLibraries(
-                        DependencyResolvers
-                                .use(MavenDependencyResolver.class)
-                                .loadMetadataFromPom("pom.xml")
-                                .artifacts("org.jboss.narayana.rts:restat-util:5.0.0.M2-SNAPSHOT",
-                                        "org.jboss.narayana.jta:narayana-jta:5.0.0.M1").resolveAsFiles())
-                .setWebXML(new File("src/test/webapp/WEB-INF/web.xml"));
+                .addAsLibraries(resolver.artifact("org.jboss.narayana.jta:narayana-jta:5.0.0.M1").resolveAsFiles())
+                .addAsLibraries(resolver.artifact("org.jboss.narayana.rts:restat-util:5.0.0.M2-SNAPSHOT").resolveAsFiles());
+
+        System.out.println(archive);
 
         return archive;
     }
