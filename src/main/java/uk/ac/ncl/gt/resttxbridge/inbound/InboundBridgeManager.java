@@ -97,7 +97,6 @@ public final class InboundBridgeManager {
      * @throws SystemException
      */
     public static synchronized void removeParticipantMapping(String participantId) throws SystemException {
-
         System.out.println("InboundBridgeManager.removeParticipantMapping(participantId=" + participantId + ")");
 
         if (participantId == null) {
@@ -116,8 +115,7 @@ public final class InboundBridgeManager {
      * @throws XAException
      * @throws SystemException
      */
-    private static synchronized void createInboundBridgeMapping(String txUrl, String baseUrl) throws XAException,
-            SystemException {
+    private static synchronized void createInboundBridgeMapping(String txUrl, String baseUrl) throws XAException, SystemException {
 
         System.out.println("InboundBridgeManager.createMapping()");
 
@@ -143,7 +141,6 @@ public final class InboundBridgeManager {
      * @param baseUrl
      */
     private static synchronized void enlistParticipant(String txUrl, String participantId, String baseUrl) {
-
         System.out.println("InboundBridgeManager.enlistParticipant()");
 
         if (!baseUrl.substring(baseUrl.length() - 1).equals("/")) {

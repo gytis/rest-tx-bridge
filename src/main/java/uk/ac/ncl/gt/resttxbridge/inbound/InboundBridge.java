@@ -1,6 +1,6 @@
 package uk.ac.ncl.gt.resttxbridge.inbound;
 
-import javax.naming.InitialContext;
+import javax.transaction.InvalidTransactionException;
 import javax.transaction.Status;
 import javax.transaction.SystemException;
 import javax.transaction.Transaction;
@@ -32,19 +32,17 @@ public final class InboundBridge {
     /**
      * Associate the JTA transaction to the current Thread. Used by inbound bridge preprocess interceptor.
      * 
-     * @throws Exception
+     * @throws SystemException 
+     * @throws XAException 
+     * @throws IllegalStateException 
+     * @throws InvalidTransactionException 
      */
-    public void start() throws Exception {
+    public void start() throws XAException, SystemException, InvalidTransactionException, IllegalStateException {
 
         System.out.println("InboundBridge.start()");
 
         Transaction tx = getTransaction();
         TransactionManager.transactionManager().resume(tx);
-        
-        System.out.println(TransactionManager.transactionManager().getTransaction());
-        
-        javax.transaction.TransactionManager tm = (javax.transaction.TransactionManager) new InitialContext().lookup("java:jboss/TransactionManager");
-        System.out.println(tm.getTransaction());
     }
 
     /**
@@ -75,7 +73,6 @@ public final class InboundBridge {
      */
     private Transaction getTransaction() throws XAException, SystemException {
         System.out.println("InboundBridge.getTransaction()");
-        System.out.println(Thread.currentThread().getId());
         
         Transaction tx = SubordinationManager.getTransactionImporter().importTransaction(xid);
 
@@ -86,7 +83,7 @@ public final class InboundBridge {
             case Status.STATUS_COMMITTING:
                 break;
             default:
-                throw new IllegalStateException("Transaction not in state ACTIVE");
+                throw new IllegalStateException("Transaction is not in state ACTIVE");
         }
 
         return tx;

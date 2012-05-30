@@ -13,9 +13,8 @@ import org.jboss.resteasy.client.ClientRequest;
 import org.jboss.resteasy.client.ClientResponse;
 import org.jboss.resteasy.spi.Link;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.asset.StringAsset;
 import org.jboss.shrinkwrap.api.spec.WebArchive;
-import org.jboss.shrinkwrap.resolver.api.DependencyResolvers;
-import org.jboss.shrinkwrap.resolver.api.maven.MavenDependencyResolver;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -29,6 +28,9 @@ import uk.ac.ncl.gt.resttxbridge.inbound.service.DummyParticipant;
 @RunWith(Arquillian.class)
 public class InboundBridgeTest {
 
+    private static final String ManifestMF = "Manifest-Version: 1.0\n"
+            + "Dependencies: org.jboss.jts, org.hornetq\n";
+    
     private static final String TXN_MGR_URL = "http://localhost:8080/rest-tx/tx/transaction-manager";
 
     private static final String BASE_URL = "http://localhost:8080/rest-tx-bridge-test";
@@ -37,20 +39,11 @@ public class InboundBridgeTest {
 
     @Deployment
     public static WebArchive createDeployment() {
-        MavenDependencyResolver resolver = DependencyResolvers.use(MavenDependencyResolver.class)
-                .includeDependenciesFromPom("pom.xml").scope("provided");
-
         WebArchive archive = ShrinkWrap.create(WebArchive.class, "rest-tx-bridge-test.war")
                 .addAsWebInfResource(new File("src/test/webapp", "WEB-INF/web.xml"))
-                .addPackage("uk.ac.ncl.gt.resttxbridge.annotation")
-                .addPackage("uk.ac.ncl.gt.resttxbridge.inbound")
-                .addPackage("uk.ac.ncl.gt.resttxbridge.inbound.provider")
-                .addPackage("uk.ac.ncl.gt.resttxbridge.inbound.service")
-                .addPackage("uk.ac.ncl.gt.resttxbridge.inbound.xa")
-                .addAsLibraries(resolver.artifact("org.jboss.narayana.jta:narayana-jta:5.0.0.M1").resolveAsFiles())
-                .addAsLibraries(resolver.artifact("org.jboss.narayana.rts:restat-util:5.0.0.M2-SNAPSHOT").resolveAsFiles());
-
-        System.out.println(archive);
+                .addPackages(true, "uk.ac.ncl.gt.resttxbridge")
+                .addPackages(true, "org.jboss.jbossts.star")
+                .setManifest(new StringAsset(ManifestMF));
 
         return archive;
     }
