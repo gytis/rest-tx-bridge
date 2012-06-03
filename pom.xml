@@ -9,7 +9,6 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <jbossHome>/home/gytis/Studies/MCs/Dissertation/jboss-as-7.1.1.Final/</jbossHome>
   </properties>
 
   <build>
