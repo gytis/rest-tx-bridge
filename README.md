@@ -10,8 +10,6 @@ Bridge between rest-tx and JPA transactions.
 Build and Deploy
 -------------------------
 
-In order to execute quickstart please follow these steps:
-
 1. Download and deploy rest-tx coordinator (https://github.com/jbosstm/narayana/tree/master/rest-tx).
 
 2. Make sure that "org.jboss.narayana.rts:restat-util:5.0.0.M2-SNAPSHOT" artifact is in your local Maven repository (comes from 1 step).
