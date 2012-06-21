@@ -29,7 +29,7 @@ import org.junit.runner.RunWith;
 public class InboundBridgeTest {
 
     private static final String ManifestMF = "Manifest-Version: 1.0\n"
-            + "Dependencies: org.jboss.jts, org.hornetq\n";
+            + "Dependencies: org.jboss.jts, org.hornetq, org.jboss.logging\n";
     
     private static final String TXN_MGR_URL = "http://localhost:8080/rest-tx/tx/transaction-manager";
 

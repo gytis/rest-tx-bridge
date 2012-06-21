@@ -9,6 +9,7 @@ import org.jboss.jbossts.resttxbridge.annotation.Transactional;
 import org.jboss.jbossts.resttxbridge.inbound.InboundBridge;
 import org.jboss.jbossts.resttxbridge.inbound.InboundBridgeManager;
 import org.jboss.jbossts.resttxbridge.inbound.Utils;
+import org.jboss.logging.Logger;
 import org.jboss.resteasy.annotations.interception.ServerInterceptor;
 import org.jboss.resteasy.core.ResourceMethod;
 import org.jboss.resteasy.core.ServerResponse;
@@ -16,17 +17,18 @@ import org.jboss.resteasy.spi.Failure;
 import org.jboss.resteasy.spi.HttpRequest;
 import org.jboss.resteasy.spi.interception.PreProcessInterceptor;
 
-
 /**
+ * Provider class intercepts every request before method is executed. If method is annotated with <code>Transactional</code>
+ * annotation, transaction bridge is initiated.
  * 
  * @author Gytis Trikleris
  * 
- *         Provider class intercepts every request before method is executed. If method is annotated with
- *         <code>Transactional</code> annotation, transaction bridge is initiated.
  */
 @Provider
 @ServerInterceptor
 public final class InboundBridgePreProcessInterceptor implements PreProcessInterceptor {
+
+    private final static Logger LOG = Logger.getLogger(InboundBridgePreProcessInterceptor.class.getName());
 
     /**
      * Main interceptor's method.
@@ -68,8 +70,7 @@ public final class InboundBridgePreProcessInterceptor implements PreProcessInter
             InboundBridge bridge = InboundBridgeManager.getInboundBridge(txUrl, uriInfo.getBaseUri().toString());
             bridge.start();
         } catch (Exception e) {
-            // TODO log exception
-            e.printStackTrace();
+            System.err.println(e.getMessage());
         }
     }
 

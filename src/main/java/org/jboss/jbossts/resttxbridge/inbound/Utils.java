@@ -9,6 +9,7 @@ import java.util.regex.Pattern;
 import javax.ws.rs.core.MultivaluedMap;
 
 import org.jboss.jbossts.star.util.TxSupport;
+import org.jboss.logging.Logger;
 import org.jboss.resteasy.client.ClientRequest;
 import org.jboss.resteasy.client.ClientResponse;
 import org.jboss.resteasy.spi.HttpRequest;
@@ -20,9 +21,11 @@ import org.jboss.resteasy.spi.HttpRequest;
  */
 public final class Utils {
 
-    public static String LINK_REGEX = "<(.*?)>.*rel=\"(.*?)\"";
+    public static final String LINK_REGEX = "<(.*?)>.*rel=\"(.*?)\"";
 
-    public static Pattern LINK_PATTERN = Pattern.compile(LINK_REGEX);
+    public static final Pattern LINK_PATTERN = Pattern.compile(LINK_REGEX);
+    
+    private static final Logger LOG = Logger.getLogger(Utils.class);
 
     /**
      * Extracts participant id from http request.

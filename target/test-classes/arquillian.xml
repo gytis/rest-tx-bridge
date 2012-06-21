@@ -5,7 +5,7 @@
         http://jboss.org/schema/arquillian/arquillian_1_0.xsd">
     <container qualifier="jbossas-managed" default="true">
         <configuration>
-            <property name="jbossHome">/home/gytis/Studies/MCs/Dissertation/jboss-as-7.1.1.Final</property>
+            <property name="jbossHome">/opt/jboss-as-7.1.1.Final</property>
             <property name="serverConfig">standalone-full.xml</property>
         </configuration>
     </container>

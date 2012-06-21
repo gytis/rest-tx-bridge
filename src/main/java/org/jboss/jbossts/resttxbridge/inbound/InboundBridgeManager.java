@@ -1,14 +1,18 @@
 package org.jboss.jbossts.resttxbridge.inbound;
 
+import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import javax.transaction.RollbackException;
 import javax.transaction.SystemException;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.Xid;
 
 import org.jboss.jbossts.star.util.TxSupport;
+import org.jboss.logging.Logger;
+import org.jboss.resteasy.util.Base64;
 
 import com.arjuna.ats.arjuna.common.Uid;
 import com.arjuna.ats.jta.xa.XATxConverter;
@@ -20,8 +24,10 @@ import com.arjuna.ats.jta.xa.XATxConverter;
  */
 public final class InboundBridgeManager {
 
+    private static final Logger LOG = Logger.getLogger(InboundBridgeManager.class);
+
     /**
-     * Mappings of rest transactions and inbound bridges. Map key is URL of transaction.
+     * Mappings of rest transactions and inbound bridges. Map key is URL of the transaction.
      */
     private static final ConcurrentMap<String, InboundBridge> inboundBridgeMappings = new ConcurrentHashMap<String, InboundBridge>();
 
@@ -33,15 +39,42 @@ public final class InboundBridgeManager {
      */
     private static final ConcurrentMap<String, String> participantMappings = new ConcurrentHashMap<String, String>();
 
+    public static boolean addInboundBridge(InboundBridge inboundBridge) {
+        InboundBridge mappedInboundBridge = inboundBridgeMappings.get(inboundBridge.getTxUrl());
+        
+        if (inboundBridge.equals(mappedInboundBridge)) {
+            // Bridge is already mapped
+            return true;
+        }
+        
+        if (mappedInboundBridge != null) {
+            // REST-AT trasnaction is already mapped with another bridge
+            return false;
+        }
+        
+        if (participantMappings.containsKey(inboundBridge.getParticipantId())) {
+            // Participant is already mapped with another REST-AT transaction
+            return true;
+        }
+        
+        inboundBridgeMappings.put(inboundBridge.getTxUrl(), inboundBridge);
+        participantMappings.put(inboundBridge.getParticipantId(), inboundBridge.getTxUrl());
+        
+        return true;
+    }
+    
     /**
      * 
      * @param txUrl
      * @param baseUrl
      * @return
+     * @throws IllegalArgumentException
      * @throws XAException
      * @throws SystemException
+     * @throws RollbackException 
+     * @throws IllegalStateException 
      */
-    public static InboundBridge getInboundBridge(String txUrl, String baseUrl) throws XAException, SystemException {
+    public static InboundBridge getInboundBridge(String txUrl, String baseUrl) throws XAException, SystemException, IllegalStateException, RollbackException {
         System.out.println("InboundBridgeManager.getInboundBridge(txUrl=" + txUrl + ")");
 
         if (txUrl == null) {
@@ -113,11 +146,13 @@ public final class InboundBridgeManager {
      * @param baseUrl
      * @throws XAException
      * @throws SystemException
+     * @throws RollbackException 
+     * @throws IllegalStateException 
      */
     private static synchronized void createInboundBridgeMapping(String txUrl, String baseUrl) throws XAException,
-            SystemException {
+            SystemException, IllegalStateException, RollbackException {
 
-        System.out.println("InboundBridgeManager.createMapping()");
+        System.out.println("InboundBridgeManager.createMapping(txUrl=" + txUrl + ")");
 
         if (inboundBridgeMappings.containsKey(txUrl)) {
             return;
@@ -130,15 +165,18 @@ public final class InboundBridgeManager {
         String participantId = BridgeDurableParticipant.TYPE_IDENTIFIER + new Uid().fileStringForm();
 
         enlistParticipant(txUrl, participantId, baseUrl);
-        InboundBridge bridge = new InboundBridge(xid);
+        InboundBridge bridge = new InboundBridge(xid, txUrl, participantId);
         inboundBridgeMappings.put(txUrl, bridge);
     }
 
     /**
+     * Enlists participant with REST-AT transaction.
      * 
      * @param txUrl
      * @param participantId
      * @param baseUrl
+     * @return URL to recover participant
+     * @throws UnsupportedEncodingException 
      */
     private static synchronized void enlistParticipant(String txUrl, String participantId, String baseUrl) {
         System.out.println("InboundBridgeManager.enlistParticipant()");
@@ -154,6 +192,7 @@ public final class InboundBridgeManager {
         String pUrls = TxSupport.getParticipantUrls(participantUrl, participantUrl);
         new TxSupport().httpRequest(new int[] { HttpURLConnection.HTTP_CREATED }, txUrl, "POST", TxSupport.POST_MEDIA_TYPE,
                 pUrls, null);
+        
         participantMappings.put(participantId, txUrl);
     }
 

@@ -3,6 +3,7 @@ package org.jboss.jbossts.resttxbridge.inbound;
 import java.net.HttpURLConnection;
 
 import javax.resource.spi.XATerminator;
+import javax.transaction.RollbackException;
 import javax.transaction.SystemException;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
@@ -17,6 +18,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 
+import org.apache.log4j.Logger;
 import org.jboss.jbossts.resttxbridge.annotation.Participant;
 import org.jboss.jbossts.star.util.TxSupport;
 
@@ -49,6 +51,8 @@ public final class BridgeDurableParticipant {
      * Participant URL segment.
      */
     public static final String PARTICIPANT_SEGMENT = "participant-resource";
+    
+    private static final Logger LOG = Logger.getLogger(BridgeDurableParticipant.class);
 
     @Context
     private UriInfo uriInfo;
@@ -170,8 +174,7 @@ public final class BridgeDurableParticipant {
             }
 
         } catch (Exception e) {
-            // TODO log exception
-            e.printStackTrace();
+            System.err.println(e.getMessage());
         }
 
         if (!TxSupport.isPrepare(responseStatus)) {
@@ -196,8 +199,7 @@ public final class BridgeDurableParticipant {
             xaTerminator.commit(xid, false);
 
         } catch (Exception e) {
-            // TODO log exception
-            e.printStackTrace();
+            System.err.println(e.getMessage());
         } finally {
             cleanup(participantId);
         }
@@ -222,8 +224,7 @@ public final class BridgeDurableParticipant {
             }
 
         } catch (Exception e) {
-            // TODO log exception
-            e.printStackTrace();
+            System.err.println(e.getMessage());
             cleanup(participantId);
         }
     }
@@ -243,8 +244,7 @@ public final class BridgeDurableParticipant {
             xaTerminator.rollback(xid);
 
         } catch (Exception e) {
-            // TODO log exception
-            e.printStackTrace();
+            System.err.println(e.getMessage());
         } finally {
             cleanup(participantId);
         }
@@ -261,8 +261,7 @@ public final class BridgeDurableParticipant {
         try {
             InboundBridgeManager.removeParticipantMapping(participantId);
         } catch (Exception e) {
-            // TODO log exception
-            e.printStackTrace();
+            System.err.println(e.getMessage());
         }
     }
 
@@ -273,8 +272,10 @@ public final class BridgeDurableParticipant {
      * @return
      * @throws XAException
      * @throws SystemException
+     * @throws RollbackException 
+     * @throws IllegalStateException 
      */
-    private Xid getXid(String participantId) throws XAException, SystemException {
+    private Xid getXid(String participantId) throws XAException, SystemException, IllegalStateException, RollbackException {
         String txUrl = InboundBridgeManager.getParticipantTransaction(participantId);
         InboundBridge inboundBridge = InboundBridgeManager.getInboundBridge(txUrl, uriInfo.getBaseUri().toString());
 

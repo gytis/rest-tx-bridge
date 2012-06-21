@@ -9,6 +9,7 @@ import org.jboss.jbossts.resttxbridge.annotation.Transactional;
 import org.jboss.jbossts.resttxbridge.inbound.InboundBridge;
 import org.jboss.jbossts.resttxbridge.inbound.InboundBridgeManager;
 import org.jboss.jbossts.resttxbridge.inbound.Utils;
+import org.jboss.logging.Logger;
 import org.jboss.resteasy.annotations.interception.ServerInterceptor;
 import org.jboss.resteasy.core.ServerResponse;
 import org.jboss.resteasy.spi.HttpRequest;
@@ -24,9 +25,11 @@ import org.jboss.resteasy.spi.interception.PostProcessInterceptor;
 @ServerInterceptor
 public final class InboundBridgePostProcessInterceptor implements PostProcessInterceptor {
 
+    private static final Logger LOG = Logger.getLogger(InboundBridgePostProcessInterceptor.class);
+    
     // TODO Is it OK to store it in this place?
     @Context
-    HttpRequest request;
+    private HttpRequest request;
 
     @Override
     public void postProcess(ServerResponse response) {
@@ -49,14 +52,13 @@ public final class InboundBridgePostProcessInterceptor implements PostProcessInt
     }
 
     private void stopBridge(String txUrl, UriInfo uriInfo) {
-        System.out.println("InboundBridgePostProcessInterceptor.stopBridge()");
+        System.out.println("InboundBridgePostProcessInterceptor.stopBridge(txUrl=" + txUrl + ")");
 
         try {
             InboundBridge bridge = InboundBridgeManager.getInboundBridge(txUrl, uriInfo.getBaseUri().toString());
             bridge.stop();
         } catch (Exception e) {
-            // TODO log exception
-            e.printStackTrace();
+            System.err.println(e.getMessage());
         }
     }
 
