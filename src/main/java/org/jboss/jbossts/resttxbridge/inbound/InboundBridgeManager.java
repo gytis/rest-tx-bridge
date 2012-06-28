@@ -40,6 +40,11 @@ public final class InboundBridgeManager {
     private static final ConcurrentMap<String, String> participantMappings = new ConcurrentHashMap<String, String>();
 
     public static boolean addInboundBridge(InboundBridge inboundBridge) {
+        /*
+         * TODO if rest transaction is associated with new bridge (new request within same transaction was made
+         * immediately after recovery) - notify rest-at coordinator about new participant url
+         */
+        
         InboundBridge mappedInboundBridge = inboundBridgeMappings.get(inboundBridge.getTxUrl());
         
         if (inboundBridge.equals(mappedInboundBridge)) {
@@ -54,7 +59,7 @@ public final class InboundBridgeManager {
         
         if (participantMappings.containsKey(inboundBridge.getParticipantId())) {
             // Participant is already mapped with another REST-AT transaction
-            return true;
+            return false;
         }
         
         inboundBridgeMappings.put(inboundBridge.getTxUrl(), inboundBridge);

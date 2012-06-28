@@ -48,6 +48,11 @@ public final class InboundBridge implements XAResource, Serializable {
      * Id of the REST-AT participant.
      */
     private String participantId;
+    
+    
+    public InboundBridge() {
+        System.out.println("InboundBridge.InboundBridge()");
+    }
 
     public InboundBridge(Xid xid, String txUrl, String participantId) throws XAException, SystemException,
             IllegalStateException, RollbackException {
@@ -95,6 +100,10 @@ public final class InboundBridge implements XAResource, Serializable {
         System.out.println("InboundBridge.getXid(). Returns xid=" + xid);
         return xid;
     }
+    
+    public void setXid(Xid xid) {
+        this.xid = xid;
+    }
 
     /**
      * 
@@ -104,10 +113,18 @@ public final class InboundBridge implements XAResource, Serializable {
         System.out.println("InboundBridge.getTxUrl(). Returns txUrl=" + txUrl);
         return txUrl;
     }
+    
+    public void setTxUrl(String txUrl) {
+        this.txUrl = txUrl;
+    }
 
     public String getParticipantId() {
         System.out.println("InboundBridge.getParticipantId(). Returns particpantId=" + participantId);
         return participantId;
+    }
+    
+    public void setParticipantId(String participantId) {
+        this.participantId = participantId;
     }
 
     public boolean equals(Object o) {

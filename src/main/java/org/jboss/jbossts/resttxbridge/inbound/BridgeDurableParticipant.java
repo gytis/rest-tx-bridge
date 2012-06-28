@@ -43,7 +43,7 @@ public final class BridgeDurableParticipant {
     /**
      * Unique (well, hopefully) formatId so we can distinguish our own Xids.
      * 
-     * TODO it is taken from WS bridge so probably has to be changed.
+     * TODO what value should I add here? So far it is taken from WS bridge.
      */
     public static final int XARESOURCE_FORMAT_ID = 131080;
 
@@ -178,6 +178,7 @@ public final class BridgeDurableParticipant {
         }
 
         if (!TxSupport.isPrepare(responseStatus)) {
+            System.out.println("BridgeDurableParticipant was not prepared. Status=" + responseStatus);
             cleanup(participantId);
         }
 
@@ -199,6 +200,7 @@ public final class BridgeDurableParticipant {
             xaTerminator.commit(xid, false);
 
         } catch (Exception e) {
+            // TODO should aborted status be returned?
             System.err.println(e.getMessage());
         } finally {
             cleanup(participantId);
@@ -220,10 +222,12 @@ public final class BridgeDurableParticipant {
             if (xaTerminator.prepare(xid) == XAResource.XA_OK) {
                 commit(participantId);
             } else {
+                // TODO should aborted status be returned?
                 cleanup(participantId);
             }
 
         } catch (Exception e) {
+            // TODO should aborted status be returned?
             System.err.println(e.getMessage());
             cleanup(participantId);
         }

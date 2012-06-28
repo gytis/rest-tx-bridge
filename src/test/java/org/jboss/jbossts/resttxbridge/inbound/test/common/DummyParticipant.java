@@ -1,4 +1,4 @@
-package org.jboss.jbossts.resttxbridge.inbound.service;
+package org.jboss.jbossts.resttxbridge.inbound.test.common;
 
 import java.net.HttpURLConnection;
 import java.util.ArrayList;
@@ -22,7 +22,7 @@ import org.jboss.jbossts.star.util.TxSupport;
  * @author Gytis Trikleris
  *
  */
-@Path(DummyParticipant.PARTICIPANT_SEGMENT)
+@Path(DummyParticipant.PARTICIPANT_SEGMENT + "/{i}")
 public final class DummyParticipant {
 
     /**
@@ -86,6 +86,7 @@ public final class DummyParticipant {
             responseStatus = TxSupport.PREPARED;
 
         } else if (TxSupport.isCommit(txStatus)) {
+            commit();
             responseStatus = TxSupport.COMMITTED;
 
         } else if (txStatus.equals(TxSupport.COMMITTED_ONE_PHASE)) {
@@ -100,6 +101,10 @@ public final class DummyParticipant {
         } else {
             return Response.ok(TxSupport.toStatusContent(responseStatus)).build();
         }
+    }
+    
+    public void commit() {
+        
     }
 
     @GET

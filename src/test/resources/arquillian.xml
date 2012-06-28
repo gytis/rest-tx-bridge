@@ -1,12 +1,49 @@
-<arquillian xmlns="http://jboss.org/schema/arquillian"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="
+<arquillian xmlns="http://jboss.org/schema/arquillian" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="
         http://jboss.org/schema/arquillian
         http://jboss.org/schema/arquillian/arquillian_1_0.xsd">
+<!--   <container qualifier="jbossas-managed" default="true">
+    <configuration>
+      <property name="jbossHome">/opt/jboss-as-7.1.1.Final</property>
+      <property name="serverConfig">standalone-full.xml</property>
+    </configuration>
+  </container>
+  <container qualifier="jbossas-manual" default="false" mode="manual">
+    <protocol type="jmx-as7">
+      <property name="executionType">REMOTE</property>
+    </protocol>
+    <configuration>
+      <property name="jbossHome">/opt/jboss-as-7.1.1.Final</property>
+      <property name="serverConfig">standalone-full.xml</property>
+    </configuration>
+  </container> -->
+  
+  
+  <container qualifier="jbossas-manual" default="true" mode="manual">
+    <protocol type="jmx-as7">
+      <property name="executionType">REMOTE</property>
+    </protocol>
+    <configuration>
+      <property name="jbossHome">/opt/jboss-as-7.1.1.Final</property>
+      <property name="serverConfig">standalone-full.xml</property>
+    </configuration>
+  </container>
+
+<!--   <group qualifier="jboss-cluster">
     <container qualifier="jbossas-managed" default="true">
-        <configuration>
-            <property name="jbossHome">/opt/jboss-as-7.1.1.Final</property>
-            <property name="serverConfig">standalone-full.xml</property>
-        </configuration>
+      <configuration>
+        <property name="jbossHome">/opt/jboss-as-7.1.1.Final</property>
+        <property name="serverConfig">standalone-full.xml</property>
+        <property name="bindHttpPort">8080</property>
+      </configuration>
     </container>
+    <container qualifier="jbossas-manual" mode="manual">
+      <configuration>
+        <property name="jbossHome">/opt/jboss-as-7.1.1.Final</property>
+        <property name="serverConfig">standalone-full.xml</property>
+        <property name="bindHttpPort">8081</property>
+      </configuration>
+    </container>
+  </group> -->
+  
 </arquillian>

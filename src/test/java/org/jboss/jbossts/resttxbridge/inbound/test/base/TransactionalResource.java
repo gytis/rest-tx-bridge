@@ -1,4 +1,4 @@
-package org.jboss.jbossts.resttxbridge.inbound.service;
+package org.jboss.jbossts.resttxbridge.inbound.test.base;
 
 import javax.transaction.Transaction;
 import javax.ws.rs.GET;
@@ -12,7 +12,6 @@ import javax.ws.rs.core.Response;
 
 import org.hornetq.utils.json.JSONArray;
 import org.jboss.jbossts.resttxbridge.annotation.Transactional;
-import org.jboss.jbossts.resttxbridge.inbound.xa.LoggingXAResource;
 
 import com.arjuna.ats.jta.TransactionManager;
 

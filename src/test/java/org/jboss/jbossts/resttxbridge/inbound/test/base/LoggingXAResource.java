@@ -1,4 +1,4 @@
-package org.jboss.jbossts.resttxbridge.inbound.xa;
+package org.jboss.jbossts.resttxbridge.inbound.test.base;
 
 import java.util.ArrayList;
 import java.util.List;

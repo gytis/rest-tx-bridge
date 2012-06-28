@@ -1,4 +1,4 @@
-package org.jboss.jbossts.resttxbridge.inbound;
+package org.jboss.jbossts.resttxbridge.inbound.test.junit;
 
 import static org.junit.Assert.*;
 
@@ -6,9 +6,13 @@ import java.io.File;
 import java.net.HttpURLConnection;
 
 import org.hornetq.utils.json.JSONArray;
+import org.jboss.arquillian.container.test.api.ContainerController;
+import org.jboss.arquillian.container.test.api.Deployer;
 import org.jboss.arquillian.container.test.api.Deployment;
+import org.jboss.arquillian.container.test.api.TargetsContainer;
 import org.jboss.arquillian.junit.Arquillian;
-import org.jboss.jbossts.resttxbridge.inbound.service.DummyParticipant;
+import org.jboss.arquillian.test.api.ArquillianResource;
+import org.jboss.jbossts.resttxbridge.inbound.test.common.DummyParticipant;
 import org.jboss.jbossts.star.util.TxSupport;
 import org.jboss.resteasy.client.ClientRequest;
 import org.jboss.resteasy.client.ClientResponse;
@@ -16,6 +20,8 @@ import org.jboss.resteasy.spi.Link;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.asset.StringAsset;
 import org.jboss.shrinkwrap.api.spec.WebArchive;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -27,6 +33,10 @@ import org.junit.runner.RunWith;
  */
 @RunWith(Arquillian.class)
 public class InboundBridgeTest {
+    
+    public static final String DEPLOYMENT_NAME = "rest-tx-bridge-test";
+
+    public static final String CONTAINER_NAME = "jbossas-manual";
 
     private static final String ManifestMF = "Manifest-Version: 1.0\n"
             + "Dependencies: org.jboss.jts, org.hornetq, org.jboss.logging\n";
@@ -37,15 +47,39 @@ public class InboundBridgeTest {
     
     private static final String DUMMY_URL = BASE_URL + "/" + DummyParticipant.PARTICIPANT_SEGMENT;
 
-    @Deployment
+    @ArquillianResource
+    private ContainerController controller;
+
+    @ArquillianResource
+    private Deployer deployer;
+    
+    @Deployment(name = DEPLOYMENT_NAME, testable = false, managed = false)
+    @TargetsContainer(CONTAINER_NAME)
     public static WebArchive createDeployment() {
-        WebArchive archive = ShrinkWrap.create(WebArchive.class, "rest-tx-bridge-test.war")
-                .addAsWebInfResource(new File("src/test/webapp", "WEB-INF/web.xml"))
-                .addPackages(true, "org.jboss.jbossts.resttxbridge")
+        WebArchive archive = ShrinkWrap.create(WebArchive.class, DEPLOYMENT_NAME + ".war")
+                .addAsWebInfResource(new File("src/test/webapp", "WEB-INF/web-base.xml"), "web.xml")
+                .addPackages(false, "org.jboss.jbossts.resttxbridge.annotation")
+                .addPackages(false, "org.jboss.jbossts.resttxbridge.inbound")
+                .addPackages(false, "org.jboss.jbossts.resttxbridge.inbound.provider")
+                .addPackages(false, "org.jboss.jbossts.resttxbridge.inbound.test.base")
+                .addPackages(false, "org.jboss.jbossts.resttxbridge.inbound.test.common")
                 .addPackages(true, "org.jboss.jbossts.star")
                 .setManifest(new StringAsset(ManifestMF));
 
         return archive;
+    }
+    
+    @Before
+    public void setUp() {
+        controller.start(CONTAINER_NAME);
+        deployer.deploy(DEPLOYMENT_NAME);
+    }
+    
+    @After
+    public void tearDown() {
+        deployer.undeploy(DEPLOYMENT_NAME);
+        controller.stop(CONTAINER_NAME);
+        controller.kill(CONTAINER_NAME);
     }
 
     @Test
