@@ -1,6 +1,5 @@
 RULE Kill JVM before bridge participant commit
-#CLASS org.jboss.jbossts.resttxbridge.inbound.BridgeDurableParticipant
-CLASS org.jboss.jbossts.resttxbridge.inbound.test.common.DummyParticipant
+CLASS org.jboss.jbossts.resttxbridge.inbound.BridgeDurableParticipant
 METHOD commit
 AT ENTRY
 IF true
