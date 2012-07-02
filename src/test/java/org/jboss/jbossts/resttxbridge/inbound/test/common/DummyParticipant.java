@@ -22,7 +22,7 @@ import org.jboss.jbossts.star.util.TxSupport;
  * @author Gytis Trikleris
  *
  */
-@Path(DummyParticipant.PARTICIPANT_SEGMENT + "/{i}")
+@Path(DummyParticipant.PARTICIPANT_SEGMENT)
 public final class DummyParticipant {
 
     /**
@@ -86,7 +86,6 @@ public final class DummyParticipant {
             responseStatus = TxSupport.PREPARED;
 
         } else if (TxSupport.isCommit(txStatus)) {
-            commit();
             responseStatus = TxSupport.COMMITTED;
 
         } else if (txStatus.equals(TxSupport.COMMITTED_ONE_PHASE)) {
@@ -101,10 +100,6 @@ public final class DummyParticipant {
         } else {
             return Response.ok(TxSupport.toStatusContent(responseStatus)).build();
         }
-    }
-    
-    public void commit() {
-        
     }
 
     @GET
