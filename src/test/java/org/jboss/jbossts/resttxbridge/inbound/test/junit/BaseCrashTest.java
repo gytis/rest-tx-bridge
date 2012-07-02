@@ -20,6 +20,8 @@ import com.arjuna.common.internal.util.propertyservice.BeanPopulator;
 
 public class BaseCrashTest {
     public static final String DEPLOYMENT_NAME = "rest-tx-bridge-recovery-test";
+    
+    public static final String REST_AT_DEPLOYMENT_NAME = "rest-tx";
 
     public static final String CONTAINER_NAME = "jbossas-manual";
 
@@ -29,9 +31,11 @@ public class BaseCrashTest {
     
     public static final String DUMMY_URL = BASE_URL + "/" + DummyParticipant.PARTICIPANT_SEGMENT;
 
-    protected String BytemanArgs = "-Xms64m -Xmx512m -XX:MaxPermSize=256m -Dorg.jboss.byteman.verbose -Djboss.modules.system.pkgs=org.jboss.byteman -Dorg.jboss.byteman.transform.all -javaagent:target/test-classes/lib/byteman.jar=script:target/test-classes/scripts/@BMScript@.btm,boot:target/test-classes/lib/byteman.jar,listener:true";
+    protected String BytemanArgs = "-Dorg.jboss.byteman.verbose -Djboss.modules.system.pkgs=org.jboss.byteman -Dorg.jboss.byteman.transform.all -javaagent:target/test-classes/lib/byteman.jar=script:target/test-classes/scripts/@BMScript@.btm,boot:target/test-classes/lib/byteman.jar,listener:true ";
 
-    protected String javaVmArguments;
+    protected String javaVmArguments = "-Xms64m -Xmx512m -XX:MaxPermSize=256m ";
+    
+    protected String bytemanArguments;
 
     protected String testName;
 
@@ -61,6 +65,14 @@ public class BaseCrashTest {
         System.out.println(archive.toString(true));
         return archive;
     }
+    
+    @Deployment(name = REST_AT_DEPLOYMENT_NAME, testable = false, managed = false)
+    @TargetsContainer(CONTAINER_NAME)
+    public static Archive<?> createRestTxArchive() {
+        WebArchive archive = ShrinkWrap.createFromZipFile(WebArchive.class, new File("target/test-classes/lib/rest-tx-web-5.0.0.M2-SNAPSHOT.war"));
+        System.out.println(archive.toString(true));
+        return archive;
+    }
 
     @Before
     public void setUp() {
@@ -69,9 +81,8 @@ public class BaseCrashTest {
         
         recoveryEnvironmentBean.setPeriodicRecoveryPeriod(10);
         
-        javaVmArguments = BytemanArgs.replace("@BMScript@", scriptName);
-
-        javaVmArguments += " -Dcom.arjuna.ats.arjuna.recovery.PeriodicRecoveryPeriod=10";
+        bytemanArguments = BytemanArgs.replace("@BMScript@", scriptName);
+        javaVmArguments += " -Xdebug -Xnoagent -Djava.compiler=NONE -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5006";
         
         File file = new File("testlog");
         if (file.isFile() && file.exists()) {
