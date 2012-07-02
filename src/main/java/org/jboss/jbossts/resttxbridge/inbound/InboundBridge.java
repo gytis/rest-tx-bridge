@@ -102,6 +102,7 @@ public final class InboundBridge implements XAResource, Serializable {
     }
     
     public void setXid(Xid xid) {
+        System.out.println("InboundBridge.setXid(Xid)");
         this.xid = xid;
     }
 
@@ -115,6 +116,7 @@ public final class InboundBridge implements XAResource, Serializable {
     }
     
     public void setTxUrl(String txUrl) {
+        System.out.println("InboundBridge.setTxUrl(String)");
         this.txUrl = txUrl;
     }
 
@@ -124,10 +126,12 @@ public final class InboundBridge implements XAResource, Serializable {
     }
     
     public void setParticipantId(String participantId) {
+        System.out.println("InboundBridge.setParticipantId(String)");
         this.participantId = participantId;
     }
 
     public boolean equals(Object o) {
+        System.out.println("InboundBridge.equals(Object)");
         if (this == o) {
             return true;
         }
@@ -167,7 +171,7 @@ public final class InboundBridge implements XAResource, Serializable {
     }
 
     private void writeObject(ObjectOutputStream out) throws IOException {
-        System.out.println("InboundBridge.writeObject(). Persists xid=" + xid + ",txUrl=" + txUrl + ",participantId="
+        System.out.println("InboundBridge.writeObject(ObjectOutputStream). Persists xid=" + xid + ",txUrl=" + txUrl + ",participantId="
                 + participantId);
 
         out.writeObject(xid);
@@ -176,7 +180,7 @@ public final class InboundBridge implements XAResource, Serializable {
     }
 
     private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException, XAException {
-        System.out.println("InboundBridge.readObject()");
+        System.out.println("InboundBridge.readObject(ObjectInputStream)");
 
         xid = (Xid) in.readObject();
         txUrl = (String) in.readObject();
@@ -214,47 +218,57 @@ public final class InboundBridge implements XAResource, Serializable {
 
     @Override
     public void commit(Xid arg0, boolean arg1) throws XAException {
+        System.out.println("InboundBridge.commit(Xid, boolean)");
     }
 
     @Override
     public void end(Xid arg0, int arg1) throws XAException {
+        System.out.println("InboundBridge.end(Xid, int)");
     }
 
     @Override
     public void forget(Xid arg0) throws XAException {
+        System.out.println("InboundBridge.forget(Xid)");
     }
 
     @Override
     public int getTransactionTimeout() throws XAException {
+        System.out.println("InboundBridge.getTransactionTimeout()");
         return 0;
     }
 
     @Override
     public boolean isSameRM(XAResource arg0) throws XAException {
+        System.out.println("InboundBridge.isSameRM(XAResource)");
         return false;
     }
 
     @Override
     public int prepare(Xid arg0) throws XAException {
+        System.out.println("InboundBridge.prepare(Xid)");
         return XAResource.XA_OK;
     }
 
     @Override
     public Xid[] recover(int arg0) throws XAException {
-        return null;
+        System.out.println("InboundBridge.recover(int)");
+        return new Xid[0]; // TODO why not null?
     }
 
     @Override
     public void rollback(Xid arg0) throws XAException {
+        System.out.println("InboundBridge.rollback(Xid)");
     }
 
     @Override
     public boolean setTransactionTimeout(int arg0) throws XAException {
+        System.out.println("InboundBridge.setTransactionTimeout(int)");
         return false;
     }
 
     @Override
     public void start(Xid arg0, int arg1) throws XAException {
+        System.out.println("InboundBridge.start(Xid, int)");
     }
 
 }
