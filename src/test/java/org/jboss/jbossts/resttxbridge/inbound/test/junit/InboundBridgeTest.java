@@ -6,6 +6,7 @@ import java.io.File;
 import java.net.HttpURLConnection;
 
 import org.hornetq.utils.json.JSONArray;
+import org.jboss.arquillian.container.test.api.Config;
 import org.jboss.arquillian.container.test.api.ContainerController;
 import org.jboss.arquillian.container.test.api.Deployer;
 import org.jboss.arquillian.container.test.api.Deployment;
@@ -17,6 +18,7 @@ import org.jboss.jbossts.star.util.TxSupport;
 import org.jboss.resteasy.client.ClientRequest;
 import org.jboss.resteasy.client.ClientResponse;
 import org.jboss.resteasy.spi.Link;
+import org.jboss.shrinkwrap.api.Archive;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.asset.StringAsset;
 import org.jboss.shrinkwrap.api.spec.WebArchive;
@@ -35,6 +37,8 @@ import org.junit.runner.RunWith;
 public class InboundBridgeTest {
     
     public static final String DEPLOYMENT_NAME = "rest-tx-bridge-test";
+    
+    public static final String REST_AT_DEPLOYMENT_NAME = "rest-tx";
 
     public static final String CONTAINER_NAME = "jbossas-manual";
 
@@ -43,7 +47,7 @@ public class InboundBridgeTest {
     
     private static final String TXN_MGR_URL = "http://localhost:8080/rest-tx/tx/transaction-manager";
 
-    private static final String BASE_URL = "http://localhost:8080/rest-tx-bridge-test";
+    private static final String BASE_URL = "http://localhost:8080/" + DEPLOYMENT_NAME;
     
     private static final String DUMMY_URL = BASE_URL + "/" + DummyParticipant.PARTICIPANT_SEGMENT;
 
@@ -69,17 +73,29 @@ public class InboundBridgeTest {
         return archive;
     }
     
+    @Deployment(name = REST_AT_DEPLOYMENT_NAME, testable = false, managed = false)
+    @TargetsContainer(CONTAINER_NAME)
+    public static Archive<?> createRestTxArchive() {
+        WebArchive archive = ShrinkWrap.createFromZipFile(WebArchive.class, new File("target/test-classes/lib/rest-tx-web-5.0.0.M2-SNAPSHOT.war"));
+        System.out.println(archive.toString(true));
+        return archive;
+    }
+    
     @Before
     public void setUp() {
-        controller.start(CONTAINER_NAME);
+        Config config = new Config();
+//        config.add("javaVmArguments", "-Xdebug -Xnoagent -Djava.compiler=NONE -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5006");
+        
+        controller.start(CONTAINER_NAME, config.map());
         deployer.deploy(DEPLOYMENT_NAME);
+        deployer.deploy(REST_AT_DEPLOYMENT_NAME);
     }
     
     @After
     public void tearDown() {
+        deployer.undeploy(REST_AT_DEPLOYMENT_NAME);
         deployer.undeploy(DEPLOYMENT_NAME);
         controller.stop(CONTAINER_NAME);
-        controller.kill(CONTAINER_NAME);
     }
 
     @Test
