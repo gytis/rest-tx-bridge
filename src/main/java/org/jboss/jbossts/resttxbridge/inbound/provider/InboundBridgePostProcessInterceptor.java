@@ -17,9 +17,11 @@ import org.jboss.resteasy.spi.interception.PostProcessInterceptor;
 
 
 /**
+ * Intercepts incoming HTTP requests after their execution and stops the bridge.
+ * 
+ * InboundBridgePostProcessInterceptor should be registered as a class in JAX-RS Application class.
  * 
  * @author Gytis Trikleris
- * 
  */
 @Provider
 @ServerInterceptor
@@ -27,7 +29,6 @@ public final class InboundBridgePostProcessInterceptor implements PostProcessInt
 
     private static final Logger LOG = Logger.getLogger(InboundBridgePostProcessInterceptor.class);
     
-    // TODO Is it OK to store it in this place?
     @Context
     private HttpRequest request;
 

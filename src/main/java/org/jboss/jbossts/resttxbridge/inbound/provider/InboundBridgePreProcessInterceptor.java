@@ -18,11 +18,9 @@ import org.jboss.resteasy.spi.HttpRequest;
 import org.jboss.resteasy.spi.interception.PreProcessInterceptor;
 
 /**
- * Provider class intercepts every request before method is executed. If method is annotated with <code>Transactional</code>
- * annotation, transaction bridge is initiated.
+ * Intercepts incoming HTTP requests before their execution and starts the bridge if REST transaction exists.
  * 
  * @author Gytis Trikleris
- * 
  */
 @Provider
 @ServerInterceptor
