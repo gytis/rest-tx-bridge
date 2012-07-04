@@ -22,6 +22,8 @@ public final class TransactionalApplication extends Application {
         Set<Class<?>> classes = new HashSet<Class<?>>();
 
         classes.add(BridgeDurableParticipant.class);
+        classes.add(InboundBridgePreProcessInterceptor.class);
+        classes.add(InboundBridgePostProcessInterceptor.class);
 
         return classes;
     }
@@ -31,8 +33,6 @@ public final class TransactionalApplication extends Application {
 
         singletons.add(new DummyParticipant());
         singletons.add(new TransactionalResource());
-        singletons.add(new InboundBridgePreProcessInterceptor());
-        singletons.add(new InboundBridgePostProcessInterceptor());
 
         return singletons;
     }
