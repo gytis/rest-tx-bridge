@@ -32,16 +32,13 @@ public final class DummyParticipant {
 
     private final List<String> invocations = new ArrayList<String>();
 
-    @Context
-    private UriInfo uriInfo;
-
     /**
      * Returns links to the participant terminator.
      * 
      * @return Link to the participant terminator.
      */
     @HEAD
-    public Response headParticipant() {
+    public Response headParticipant(@Context UriInfo uriInfo) {
         System.out.println("DummyParticipant.headParticipant()");
         invocations.add("DummyParticipant.headParticipant()");
 
@@ -62,8 +59,6 @@ public final class DummyParticipant {
     public Response getStatus() {
         System.out.println("DummyParticipant.getStatus()");
         invocations.add("DummyParticipant.getStatus()");
-
-        // TODO check status of the subordinate transaction
 
         return null;
     }
