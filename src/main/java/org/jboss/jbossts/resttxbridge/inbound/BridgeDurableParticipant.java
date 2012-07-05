@@ -17,16 +17,14 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 
-import org.apache.log4j.Logger;
+//import org.jboss.logging.Logger;
 import org.jboss.jbossts.resttxbridge.annotation.Participant;
 import org.jboss.jbossts.star.util.TxSupport;
 
 import com.arjuna.ats.internal.jta.transaction.arjunacore.jca.SubordinationManager;
 
-
 /**
- * Participant of REST transaction.
- * Waits for the requests from REST-AT coordinator and terminates mapped JTA transactions.
+ * Participant of REST transaction. Waits for the requests from REST-AT coordinator and terminates mapped JTA transactions.
  * 
  * @author Gytis Trikleris
  */
@@ -44,22 +42,21 @@ public final class BridgeDurableParticipant {
      * Participant URL segment.
      */
     public static final String PARTICIPANT_SEGMENT = "participant-resource";
-    
-    private static final Logger LOG = Logger.getLogger(BridgeDurableParticipant.class);
-
-    // TODO move to method declarations
-    @Context
-    private UriInfo uriInfo;
 
     /**
-     * Returns links to the participant terminator.
+     * TODO use logger instead of System.out
+     */
+    // private static final Logger LOG = Logger.getLogger(BridgeDurableParticipant.class);
+
+    /**
+     * Returns link to the participant terminator.
      * 
      * @param participantId
      * @param uriInfo
      * @return Link to the participant terminator.
      */
     @HEAD
-    public Response headParticipant(@PathParam("participantId") String participantId) {
+    public Response headParticipant(@PathParam("participantId") String participantId, @Context UriInfo uriInfo) {
         System.out.println("BridgeDurableParticipant.headParticipant()");
 
         Response.ResponseBuilder builder = Response.ok();
@@ -70,7 +67,7 @@ public final class BridgeDurableParticipant {
     }
 
     /**
-     * TODO implement
+     * TODO implement. Store transaction status in bridge
      * 
      * Returns current status of the participant.
      * 
@@ -90,123 +87,147 @@ public final class BridgeDurableParticipant {
      * TxSupport.ABORTED
      * 
      * @param participantId
+     * @param uriInfo
      * @param content
      * @return
      * @throws SystemException
      * @throws XAException
      */
     @PUT
-    public Response terminateParticipant(@PathParam("participantId") String participantId, String content) throws XAException,
-            SystemException {
+    public Response terminateParticipant(@PathParam("participantId") String participantId, @Context UriInfo uriInfo,
+            String content) throws XAException, SystemException {
 
         System.out.println("BridgeDurableParticipant.terminateParticipant(). participantId=" + participantId + ", status="
                 + content);
 
         String txStatus = TxSupport.getStatus(content);
-        
+
         if (TxSupport.isPrepare(txStatus)) {
-            return prepare(participantId);
+            return prepare(participantId, uriInfo);
         } else if (TxSupport.isCommit(txStatus)) {
-            return commit(participantId);
+            return commit(participantId, uriInfo);
         } else if (txStatus.equals(TxSupport.COMMITTED_ONE_PHASE)) {
-            return commitOnePhase(participantId);
+            return commitOnePhase(participantId, uriInfo);
         } else if (TxSupport.isAbort(txStatus)) {
-            return rollback(participantId);
+            return rollback(participantId, uriInfo);
         }
-        
+
         return Response.status(HttpURLConnection.HTTP_BAD_REQUEST).build();
     }
-    
+
     /**
-     * Prepares subordinate transaction. Returns Response with one of the following statuses: TxSupport.PREPARED
+     * Prepares subordinate transaction. Returns Response with one of the following transaction statuses: TxSupport.PREPARED
      * TxSupport.READONLY TxSupport.ABORTED
      * 
+     * Status code 409 is returned if transaction does not exist or preparation of subordinate transaction failed.
+     * 
      * @param participantId
+     * @param uriInfo
      * @return Response
      */
-    private Response prepare(String participantId) {
+    private Response prepare(String participantId, UriInfo uriInfo) {
         int result = -1;
         Xid xid;
-        
+
         try {
-            xid = getXid(participantId);
+            xid = getXid(participantId, uriInfo);
         } catch (Exception e) {
             System.err.println(e.getMessage());
+            cleanup(participantId);
             return Response.status(409).build();
         }
-        
+
         XATerminator xaTerminator = SubordinationManager.getXATerminator();
-        
+
         try {
             result = xaTerminator.prepare(xid);
         } catch (XAException e) {
             System.err.println(e.getMessage());
+            cleanup(participantId);
             return Response.status(409).build();
         }
-        
+
         if (result != XAResource.XA_OK) {
             System.out.println("BridgeDurableParticipant was not prepared. XAResource status=" + result);
             cleanup(participantId);
         }
-        
+
         if (result == XAResource.XA_OK) {
             return Response.ok(TxSupport.toStatusContent(TxSupport.PREPARED)).build();
         } else if (result == XAResource.XA_RDONLY) {
-            // TODO should DELETE request be executed as mentioned in spec (12p. line 378)
             return Response.ok(TxSupport.toStatusContent(TxSupport.READONLY)).build();
         }
-        
+
         return Response.ok(TxSupport.toStatusContent(TxSupport.ABORTED)).build();
     }
 
     /**
-     * Commits subordinate transaction.
+     * Commits subordinate transaction. Returns transaction status TxSupport.COMMITTED on success or status code 409 on failure.
      * 
      * @param participantId
+     * @param uriInfo
      * @return Response
      */
-    private Response commit(String participantId) {
+    private Response commit(String participantId, UriInfo uriInfo) {
         System.out.println("BridgeDurableParticipant.commit(participantId=" + participantId + ")");
-        
+
         try {
-            Xid xid = getXid(participantId);
+            Xid xid = getXid(participantId, uriInfo);
             XATerminator xaTerminator = SubordinationManager.getXATerminator();
             xaTerminator.commit(xid, false);
         } catch (Exception e) {
             System.err.println(e.getMessage());
             return Response.status(409).build();
-        } finally {
-            cleanup(participantId);
         }
-        
-        return Response.ok(TxSupport.COMMITTED).build();
+
+        cleanup(participantId);
+
+        return Response.ok(TxSupport.toStatusContent(TxSupport.COMMITTED)).build();
     }
 
     /**
      * Prepares and commits subordinate transaction.
      * 
+     * Returns transaction status TxSupport.COMMITTED on success and status code 409 on failure.
+     * 
      * @param participantId
+     * @param uriInfo
      * @return Response
      */
-    private Response commitOnePhase(String participantId) {
+    private Response commitOnePhase(String participantId, UriInfo uriInfo) {
         System.out.println("BridgeDurableParticipant.commitOnePhase(participantId=" + participantId + ")");
-        
+
+        Xid xid = null;
+        XATerminator xaTerminator = SubordinationManager.getXATerminator();
+        int prepared = -1;
         boolean commited = false;
+
         try {
-            Xid xid = getXid(participantId);
-            XATerminator xaTerminator = SubordinationManager.getXATerminator();
-            if (xaTerminator.prepare(xid) == XAResource.XA_OK) {
-                commit(participantId);
-                commited = true;
-            }
+            xid = getXid(participantId, uriInfo);
+            prepared = xaTerminator.prepare(xid);
         } catch (Exception e) {
             System.err.println(e.getMessage());
-        } finally {
-            cleanup(participantId);
         }
-        
+
+        if (prepared == XAResource.XA_OK) {
+            try {
+                xaTerminator.commit(xid, false);
+                commited = true;
+            } catch (XAException e) {
+                System.err.println(e.getMessage());
+
+                try {
+                    xaTerminator.rollback(xid);
+                } catch (XAException e1) {
+                    System.err.println(e1.getMessage());
+                }
+            }
+        }
+
+        cleanup(participantId);
+
         if (commited) {
-            return Response.ok(TxSupport.COMMITTED).build();
+            return Response.ok(TxSupport.toStatusContent(TxSupport.COMMITTED)).build();
         }
 
         return Response.status(409).build();
@@ -215,14 +236,17 @@ public final class BridgeDurableParticipant {
     /**
      * Rolls back subordinate transaction.
      * 
+     * Returns transaction status TxSupport.ABORTED on success and status code 409 on failure.
+     * 
      * @param participantId
+     * @param uriInfo
      * @return Response
      */
-    private Response rollback(String participantId) {
+    private Response rollback(String participantId, UriInfo uriInfo) {
         System.out.println("BridgeDurableParticipant.rollback(participantId=" + participantId + ")");
-        
+
         try {
-            Xid xid = getXid(participantId);
+            Xid xid = getXid(participantId, uriInfo);
             XATerminator xaTerminator = SubordinationManager.getXATerminator();
             xaTerminator.rollback(xid);
 
@@ -232,12 +256,12 @@ public final class BridgeDurableParticipant {
         } finally {
             cleanup(participantId);
         }
-        
-        return Response.ok(TxSupport.ABORTED).build();
+
+        return Response.ok(TxSupport.toStatusContent(TxSupport.ABORTED)).build();
     }
 
     /**
-     * Cleans up references.
+     * Cleans up mappings of this REST-AT.
      * 
      * @param participantId
      */
@@ -255,13 +279,15 @@ public final class BridgeDurableParticipant {
      * Returns Xid of the subordinate transaction which is mapped with given bridge durable participant.
      * 
      * @param participantId
-     * @return
+     * @param uriInfo
+     * @return Xid
      * @throws XAException
      * @throws SystemException
-     * @throws RollbackException 
-     * @throws IllegalStateException 
+     * @throws RollbackException
+     * @throws IllegalStateException
+     * @throws IllegalArgumentException
      */
-    private Xid getXid(String participantId) throws XAException, SystemException, IllegalStateException, RollbackException {
+    private Xid getXid(String participantId, UriInfo uriInfo) throws IllegalStateException, XAException, SystemException, RollbackException {
         String txUrl = InboundBridgeManager.getParticipantTransaction(participantId);
         InboundBridge inboundBridge = InboundBridgeManager.getInboundBridge(txUrl, uriInfo.getBaseUri().toString());
 
