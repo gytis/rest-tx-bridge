@@ -4,9 +4,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.net.HttpURLConnection;
 
-import javax.resource.spi.XATerminator;
 import javax.transaction.InvalidTransactionException;
 import javax.transaction.RollbackException;
 import javax.transaction.Status;
@@ -16,8 +14,7 @@ import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
 
-import org.jboss.jbossts.star.util.TxSupport;
-import org.jboss.logging.Logger;
+//import org.jboss.logging.Logger;
 
 import com.arjuna.ats.internal.jta.transaction.arjunacore.jca.SubordinationManager;
 import com.arjuna.ats.jta.TransactionManager;
@@ -27,12 +24,19 @@ import com.arjuna.ats.jta.TransactionManager;
  * transaction is created and bridge enlists it self as a participant to participate in recovery.
  * 
  * @author Gytis Trikleris
- * 
  */
 @SuppressWarnings("serial")
 public final class InboundBridge implements XAResource, Serializable {
 
-    private static Logger LOG = Logger.getLogger(InboundBridge.class);
+    /**
+     * Unique (well, hopefully) formatId so we can distinguish our own Xids.
+     */
+    public static final int XARESOURCE_FORMAT_ID = 131081;
+
+    /**
+     * TODO use logger instead of System.out
+     */
+    // private static Logger LOG = Logger.getLogger(InboundBridge.class);
 
     /**
      * Identifier for the subordinate transaction.
@@ -48,12 +52,25 @@ public final class InboundBridge implements XAResource, Serializable {
      * Id of the REST-AT participant.
      */
     private String participantId;
-    
-    
+
+    /**
+     * Empty constructor for serialisation.
+     */
     public InboundBridge() {
         System.out.println("InboundBridge.InboundBridge()");
     }
 
+    /**
+     * Constructor creates new transaction and enlists himself to it.
+     * 
+     * @param xid
+     * @param txUrl
+     * @param participantId
+     * @throws XAException
+     * @throws SystemException
+     * @throws IllegalStateException
+     * @throws RollbackException
+     */
     public InboundBridge(Xid xid, String txUrl, String participantId) throws XAException, SystemException,
             IllegalStateException, RollbackException {
         System.out.println("InboundBridge(xid=" + xid + ",txUrl=" + txUrl + ",participantId=" + participantId + ")");
@@ -67,7 +84,9 @@ public final class InboundBridge implements XAResource, Serializable {
     }
 
     /**
-     * Associate the JTA transaction to the current Thread. Used by inbound bridge preprocess interceptor.
+     * Associate the JTA transaction to the current Thread.
+     * 
+     * Method is used by inbound bridge preprocess interceptor.
      * 
      * @throws SystemException
      * @throws XAException
@@ -82,7 +101,9 @@ public final class InboundBridge implements XAResource, Serializable {
     }
 
     /**
-     * Disassociate the JTA transaction from the current Thread. Used by inbound bridge postprocess interceptor.
+     * Disassociate the JTA transaction from the current Thread.
+     * 
+     * Method is used by inbound bridge postprocess interceptor.
      * 
      * @throws SystemException
      */
@@ -93,43 +114,72 @@ public final class InboundBridge implements XAResource, Serializable {
     }
 
     /**
+     * Returns XID of subordinate transaction.
      * 
-     * @return xid of the JTA transaction.
+     * @return Xid
      */
     public Xid getXid() {
         System.out.println("InboundBridge.getXid(). Returns xid=" + xid);
         return xid;
     }
-    
+
+    /**
+     * Sets XID of subordinate transaction.
+     * 
+     * @param xid
+     */
     public void setXid(Xid xid) {
         System.out.println("InboundBridge.setXid(Xid)");
         this.xid = xid;
     }
 
     /**
+     * Returns URL of REST-AT transaction.
      * 
-     * @return URL of REST-AT transaction.
+     * @return String
      */
     public String getTxUrl() {
         System.out.println("InboundBridge.getTxUrl(). Returns txUrl=" + txUrl);
         return txUrl;
     }
-    
+
+    /**
+     * Sets URL of REST-AT transaction.
+     * 
+     * @param txUrl
+     */
     public void setTxUrl(String txUrl) {
         System.out.println("InboundBridge.setTxUrl(String)");
         this.txUrl = txUrl;
     }
 
+    /**
+     * Returns ID of bridge's REST-AT participant.
+     * 
+     * @return String
+     */
     public String getParticipantId() {
         System.out.println("InboundBridge.getParticipantId(). Returns particpantId=" + participantId);
         return participantId;
     }
-    
+
+    /**
+     * Sets ID of bridge's REST-AT participant.
+     * 
+     * @param participantId
+     */
     public void setParticipantId(String participantId) {
         System.out.println("InboundBridge.setParticipantId(String)");
         this.participantId = participantId;
     }
 
+    /**
+     * Compares this InboundBridge with another object.
+     * 
+     * @param o
+     * @return boolean
+     * @see java.lang.Object#equals(Object)
+     */
     public boolean equals(Object o) {
         System.out.println("InboundBridge.equals(Object)");
         if (this == o) {
@@ -147,7 +197,7 @@ public final class InboundBridge implements XAResource, Serializable {
     }
 
     /**
-     * Get the JTA Transaction which corresponds to the xid of the instance.
+     * Get the JTA subordinate transaction with current XID.
      * 
      * @return
      * @throws XAException
@@ -170,48 +220,36 @@ public final class InboundBridge implements XAResource, Serializable {
         return tx;
     }
 
+    /**
+     * Serialises instance to the object output stream.
+     * 
+     * @param out
+     * @throws IOException
+     */
     private void writeObject(ObjectOutputStream out) throws IOException {
-        System.out.println("InboundBridge.writeObject(ObjectOutputStream). Persists xid=" + xid + ",txUrl=" + txUrl + ",participantId="
-                + participantId);
+        System.out.println("InboundBridge.writeObject(ObjectOutputStream). Persists xid=" + xid + ",txUrl=" + txUrl
+                + ",participantId=" + participantId);
 
         out.writeObject(xid);
         out.writeObject(txUrl);
         out.writeObject(participantId);
     }
 
-    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException, XAException {
+    /**
+     * Recreates bridge from the object input stream.
+     * 
+     * @param in
+     * @throws IOException
+     * @throws ClassNotFoundException
+     */
+    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
         System.out.println("InboundBridge.readObject(ObjectInputStream)");
 
         xid = (Xid) in.readObject();
         txUrl = (String) in.readObject();
         participantId = (String) in.readObject();
 
-        if (isRestTransactionActive()) {
-            if (!InboundBridgeManager.addInboundBridge(this)) {
-                // Bridge was not mapped - roll back JTA transaction
-                XATerminator xaTerminator = SubordinationManager.getXATerminator();
-                xaTerminator.rollback(xid);
-            }
-        } else {
-            // REST transaction is not active - roll back JTA transaction
-            XATerminator xaTerminator = SubordinationManager.getXATerminator();
-            xaTerminator.rollback(xid);
-        }
-    }
-
-    private boolean isRestTransactionActive() {
-        String response = new TxSupport().httpRequest(new int[] { HttpURLConnection.HTTP_OK }, txUrl, "GET", null, null, null);
-        if (response == null) {
-            return false;
-        }
-        
-        String[] parts = response.split("=");
-        
-        if (parts.length != 2) {
-            return false;
-        }
-        
-        return TxSupport.isActive(parts[1]);
+        InboundBridgeRecoveryModule.addRecoveredBridge(this);
     }
 
     // XAResource methods.
