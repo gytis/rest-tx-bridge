@@ -1,8 +1,7 @@
-RULE Kill JVM before bridge participant commit
+RULE Kill JVM before returning prepare result to coordinator
 CLASS org.jboss.jbossts.resttxbridge.inbound.BridgeDurableParticipant
-METHOD commit
-AT ENTRY
+METHOD prepare
+AT EXIT
 IF true
-#DO traceln("kuku")
 DO debug("Killing JVM"), killJVM()
-ENDRULE
+ENDRULEe
