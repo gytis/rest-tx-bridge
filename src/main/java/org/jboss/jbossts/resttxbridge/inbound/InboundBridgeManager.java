@@ -2,6 +2,8 @@ package org.jboss.jbossts.resttxbridge.inbound;
 
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
@@ -16,9 +18,6 @@ import org.jboss.jbossts.star.util.TxSupport;
 //import org.jboss.logging.Logger;
 
 import com.arjuna.ats.arjuna.common.Uid;
-import com.arjuna.ats.arjuna.recovery.RecoveryManager;
-import com.arjuna.ats.arjuna.recovery.RecoveryModule;
-import com.arjuna.ats.internal.jta.recovery.arjunacore.XARecoveryModule;
 import com.arjuna.ats.jta.xa.XATxConverter;
 
 /**
@@ -51,33 +50,10 @@ public final class InboundBridgeManager {
      */
     private static final ConcurrentMap<String, String> participantMappings = new ConcurrentHashMap<String, String>();
 
-    /**
-     * TODO It should be a better place for these actions.
-     * 
-     * Adds inbound bridge orphan filter to the XA recovery module. Adds inbound bridge recovery module to the recovery manager.
-     * Sets timer to execute map clearing task regularly.
-     */
-    static {
-        System.out.println("Deploying recovery module and orphan filter");
-
-        boolean bridgeModuleAdded = false;
-        RecoveryManager recoveryManager = RecoveryManager.manager();
-
-        for (RecoveryModule recoveryModule : recoveryManager.getModules()) {
-            if (recoveryModule instanceof XARecoveryModule) {
-                ((XARecoveryModule) recoveryModule).addXAResourceOrphanFilter(new InboundBridgeOrphanFilter());
-            } else if (recoveryModule instanceof InboundBridgeRecoveryModule) {
-                bridgeModuleAdded = true;
-            }
-        }
-
-        if (!bridgeModuleAdded) {
-            recoveryManager.addModule(new InboundBridgeRecoveryModule());
-        }
-
+    public static void startTimer() {
         timer.schedule(new ClearMapTask(), 0, 20 * 1000);
     }
-
+    
     /**
      * TODO if rest transaction is associated with new bridge (new request within same transaction was made immediately after
      * recovery) - notify rest-at coordinator about new participant url
@@ -229,11 +205,12 @@ public final class InboundBridgeManager {
         // construct the participantId in such as way as we can recognize it at recovery time
         String participantId = BridgeDurableParticipant.TYPE_IDENTIFIER + new Uid().fileStringForm();
 
-        enlistParticipant(txUrl, participantId, baseUrl);
-        InboundBridge bridge = new InboundBridge(xid, txUrl, participantId);
+        String recoveryUrl = enlistParticipant(txUrl, participantId, baseUrl);
+        String participantTerminationUrl = baseUrl + BridgeDurableParticipant.PARTICIPANT_SEGMENT + "/" + participantId;
+        InboundBridge bridge = new InboundBridge(xid, txUrl, recoveryUrl, participantId, participantTerminationUrl);
         inboundBridgeMappings.put(txUrl, bridge);
     }
-
+    
     /**
      * Enlists participant with REST-AT.
      * 
@@ -243,7 +220,7 @@ public final class InboundBridgeManager {
      * @return URL to recover participant
      * @throws UnsupportedEncodingException
      */
-    private static synchronized void enlistParticipant(String txUrl, String participantId, String baseUrl) {
+    private static synchronized String enlistParticipant(String txUrl, String participantId, String baseUrl) {
         System.out.println("InboundBridgeManager.enlistParticipant()");
 
         if (!baseUrl.substring(baseUrl.length() - 1).equals("/")) {
@@ -252,11 +229,17 @@ public final class InboundBridgeManager {
 
         String participantUrl = baseUrl + BridgeDurableParticipant.PARTICIPANT_SEGMENT + "/" + participantId;
         String pUrls = TxSupport.getParticipantUrls(participantUrl, participantUrl);
-        
-        new TxSupport().httpRequest(new int[] { HttpURLConnection.HTTP_CREATED }, txUrl, "POST", TxSupport.POST_MEDIA_TYPE,
-                pUrls, null);
 
+        Map<String, String> links = new HashMap<String, String>();
+
+        new TxSupport().httpRequest(new int[] { HttpURLConnection.HTTP_CREATED }, txUrl, "POST", TxSupport.POST_MEDIA_TYPE,
+                pUrls, links);
+
+        System.out.println("Enlisted bridge, recovery coordinator url is " + links.get(TxSupport.LOCATION_LINK));
+        
         participantMappings.put(participantId, txUrl);
+        
+        return links.get(TxSupport.LOCATION_LINK);
     }
 
     /**
