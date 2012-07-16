@@ -2,7 +2,6 @@ package org.jboss.jbossts.resttxbridge.inbound;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
 import javax.transaction.InvalidTransactionException;
@@ -18,6 +17,7 @@ import javax.transaction.xa.Xid;
 
 import com.arjuna.ats.internal.jta.transaction.arjunacore.jca.SubordinationManager;
 import com.arjuna.ats.jta.TransactionManager;
+import com.arjuna.ats.jta.recovery.SerializableXAResourceDeserializer;
 
 /**
  * Inbound bridge stores information about REST-AT and JTA transactions. On creation of the bridge new subordinate JTA
@@ -26,7 +26,7 @@ import com.arjuna.ats.jta.TransactionManager;
  * @author Gytis Trikleris
  */
 @SuppressWarnings("serial")
-public final class InboundBridge implements XAResource, Serializable {
+public final class InboundBridge implements XAResource, SerializableXAResourceDeserializer, Serializable {
 
     /**
      * Unique (well, hopefully) formatId so we can distinguish our own Xids.
@@ -49,9 +49,19 @@ public final class InboundBridge implements XAResource, Serializable {
     private String txUrl;
 
     /**
+     * URL for notifying the REST-AT coordinator that a participant has moved.
+     */
+    private String recoveryUrl;
+
+    /**
      * Id of the REST-AT participant.
      */
     private String participantId;
+
+    /**
+     * URL to terminate participant.
+     */
+    private String participantTerminationUrl;
 
     /**
      * Empty constructor for serialisation.
@@ -65,19 +75,24 @@ public final class InboundBridge implements XAResource, Serializable {
      * 
      * @param xid
      * @param txUrl
+     * @param recoveryUrl
      * @param participantId
+     * @param participantTerminationUrl
      * @throws XAException
      * @throws SystemException
      * @throws IllegalStateException
      * @throws RollbackException
      */
-    public InboundBridge(Xid xid, String txUrl, String participantId) throws XAException, SystemException,
-            IllegalStateException, RollbackException {
-        System.out.println("InboundBridge(xid=" + xid + ",txUrl=" + txUrl + ",participantId=" + participantId + ")");
+    public InboundBridge(Xid xid, String txUrl, String recoveryUrl, String participantId, String participantTerminationUrl)
+            throws XAException, SystemException, IllegalStateException, RollbackException {
+        System.out.println("InboundBridge(xid=" + xid + ",txUrl=" + txUrl + ", recoveryUrl=" + recoveryUrl + ",participantId="
+                + participantId + ", participantTerminationUrl=" + participantTerminationUrl + ")");
 
         this.xid = xid;
         this.txUrl = txUrl;
+        this.recoveryUrl = recoveryUrl;
         this.participantId = participantId;
+        this.participantTerminationUrl = participantTerminationUrl;
 
         Transaction tx = getTransaction();
         tx.enlistResource(this);
@@ -154,6 +169,25 @@ public final class InboundBridge implements XAResource, Serializable {
     }
 
     /**
+     * Returns URL for informing the REST-AT coordinator that this participant has moved.
+     * 
+     * @return String
+     */
+    public String getRecoveryUrl() {
+        System.out.println("InboundBridge.getRecoveryUrl(). Returns recoveryUrl=" + recoveryUrl);
+        return recoveryUrl;
+    }
+
+    /**
+     * 
+     * @param recoveryUrl
+     */
+    public void setRecoveryUrl(String recoveryUrl) {
+        System.out.println("InboundBridge.setRecoveryUrl(String)");
+        this.recoveryUrl = recoveryUrl;
+    }
+
+    /**
      * Returns ID of bridge's REST-AT participant.
      * 
      * @return String
@@ -171,6 +205,25 @@ public final class InboundBridge implements XAResource, Serializable {
     public void setParticipantId(String participantId) {
         System.out.println("InboundBridge.setParticipantId(String)");
         this.participantId = participantId;
+    }
+
+    /**
+     * 
+     * @return String
+     */
+    public String getParticipantTerminationUrl() {
+        System.out.println("InboundBridge.getParticipantTerminationUrl(). Returns participantTerminationUrl="
+                + participantTerminationUrl);
+        return participantTerminationUrl;
+    }
+
+    /**
+     * 
+     * @param participantTerminationUrl
+     */
+    public void setParticipantTerminationUrl(String participantTerminationUrl) {
+        System.out.println("InboundBridge.setParticipantTerminationUrl(String)");
+        this.participantTerminationUrl = participantTerminationUrl;
     }
 
     /**
@@ -193,7 +246,15 @@ public final class InboundBridge implements XAResource, Serializable {
         InboundBridge inboundBridge = (InboundBridge) o;
 
         return this.xid.equals(inboundBridge.xid) && txUrl.equals(inboundBridge.txUrl)
-                && participantId.equals(inboundBridge.participantId);
+                && recoveryUrl.equals(inboundBridge.recoveryUrl) && participantId.equals(inboundBridge.participantId)
+                && participantTerminationUrl.equals(inboundBridge.participantTerminationUrl);
+    }
+
+    /**
+     * TODO implement
+     */
+    public int hashCode() {
+        return super.hashCode();
     }
 
     /**
@@ -220,36 +281,18 @@ public final class InboundBridge implements XAResource, Serializable {
         return tx;
     }
 
-    /**
-     * Serialises instance to the object output stream.
-     * 
-     * @param out
-     * @throws IOException
-     */
-    private void writeObject(ObjectOutputStream out) throws IOException {
-        System.out.println("InboundBridge.writeObject(ObjectOutputStream). Persists xid=" + xid + ",txUrl=" + txUrl
-                + ",participantId=" + participantId);
-
-        out.writeObject(xid);
-        out.writeObject(txUrl);
-        out.writeObject(participantId);
+    @Override
+    public boolean canDeserialze(String className) {
+        return getClass().getName().equals(className);
     }
 
-    /**
-     * Recreates bridge from the object input stream.
-     * 
-     * @param in
-     * @throws IOException
-     * @throws ClassNotFoundException
-     */
-    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-        System.out.println("InboundBridge.readObject(ObjectInputStream)");
+    @Override
+    public XAResource deserialze(ObjectInputStream ois) throws IOException, ClassNotFoundException {
+        System.out.println("InboundBridge.deserialze(ObjectInputStream)");
+        InboundBridge inboundBridge = (InboundBridge) ois.readObject();
+        InboundBridgeRecoveryModule.addRecoveredBridge(inboundBridge);
 
-        xid = (Xid) in.readObject();
-        txUrl = (String) in.readObject();
-        participantId = (String) in.readObject();
-
-        InboundBridgeRecoveryModule.addRecoveredBridge(this);
+        return inboundBridge;
     }
 
     // XAResource methods.
