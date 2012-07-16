@@ -54,6 +54,7 @@ public class InboundBridgeRecoveryModule implements RecoveryModule {
     @Override
     public void periodicWorkFirstPass() {
         System.out.println("InboundBridgeRecoveryModule.periodicWorkFirstPass");
+        
         firstPassUids = getUidsToRecover();
     }
 
@@ -63,6 +64,7 @@ public class InboundBridgeRecoveryModule implements RecoveryModule {
     @Override
     public void periodicWorkSecondPass() {
         System.out.println("InboundBridgeRecoveryModule.periodicWorkSecondPass");
+        
         recoveredBridges.clear();
         Set<Uid> uids = getUidsToRecover();
         uids.retainAll(firstPassUids);
@@ -86,6 +88,8 @@ public class InboundBridgeRecoveryModule implements RecoveryModule {
      * @return Set<Uid>
      */
     private Set<Uid> getUidsToRecover() {
+        System.out.println("InboundBridgeRecoveryModule.getUidsToRecover");
+        
         Set<Uid> uids = new HashSet<Uid>();
 
         try {
@@ -122,8 +126,11 @@ public class InboundBridgeRecoveryModule implements RecoveryModule {
      * Adds bridges with active REST-AT to inbound bridge manager's mapping.
      */
     private void addBridgesToMapping() {
+        System.out.println("InboundBridgeRecoveryModule.addBridgesToMapping");
+        
         for (InboundBridge bridge : recoveredBridges) {
-            if (!isRestTransactionActive(bridge.getTxUrl()) || !InboundBridgeManager.addInboundBridge(bridge)) {
+            if (!isRestTransactionActive(bridge.getTxUrl(), bridge.getRecoveryUrl(), bridge.getParticipantTerminationUrl())
+                    || !InboundBridgeManager.addInboundBridge(bridge)) {
                 XATerminator xaTerminator = SubordinationManager.getXATerminator();
                 try {
                     xaTerminator.rollback(bridge.getXid());
@@ -135,31 +142,51 @@ public class InboundBridgeRecoveryModule implements RecoveryModule {
     }
 
     /**
-     * TODO check for different response codes.
-     * 
-     * Tests if REST-AT is active.
+     * Tell the REST-AT coordinator that a participant is ready for recovery
+     */
+    private boolean updateParticipantTerminationUrl(String terminatorUrl, String recoveryUrl) {
+        System.out.println("InboundBridgeRecoveryModule.updateParticipantTerminationUrl");
+        
+        TxSupport txn = new TxSupport();
+        int expectedResponses[] = new int[] { HttpURLConnection.HTTP_OK, HttpURLConnection.HTTP_NOT_FOUND };
+
+        try {
+            // you would use this request to obtain the REST-AT coordinators view of the participant
+            // txn.httpRequest(expectedResponses, recoveryUrl, "GET", null, null, null);
+
+            String terminationUrlContent = new StringBuilder().append(TxSupport.TERMINATOR_LINK).append('=')
+                    .append(terminatorUrl).toString();
+            // you would use the next request to tell the REST-AT coordinator which endpoint to terminate the
+            // participant on
+            txn.httpRequest(expectedResponses, recoveryUrl, "PUT", TxSupport.POST_MEDIA_TYPE, terminationUrlContent, null);
+        } catch (HttpResponseException e) {
+            return false;
+        }
+
+        return txn.getStatus() == HttpURLConnection.HTTP_OK;
+    }
+
+    /**
+     * Tests if REST-AT is active or if the bridge is recovering.
      * 
      * @param txUrl
      * @return boolean
      */
-    private boolean isRestTransactionActive(String txUrl) {
-        String response = null;
+    private boolean isRestTransactionActive(String txUrl, String recoveryUrl, String participantUrl) {
+        System.out.println("InboundBridgeRecoveryModule.isRestTransactionActive");
+        
+        TxSupport txn = new TxSupport();
+        int expectedResponses[] = new int[] { HttpURLConnection.HTTP_OK, HttpURLConnection.HTTP_NOT_FOUND };
         try {
-            response = new TxSupport().httpRequest(new int[] { HttpURLConnection.HTTP_OK }, txUrl, "GET", null, null, null);
+            txn.httpRequest(expectedResponses, txUrl, "GET", null, null, null);
         } catch (HttpResponseException e) {
             e.printStackTrace();
         }
 
-        if (response == null) {
-            return false;
+        if (txn.getStatus() == HttpURLConnection.HTTP_OK) {
+            return TxSupport.isActive(TxSupport.getStatus(txn.getBody()));
         }
-
-        String[] parts = response.split("=");
-
-        if (parts.length != 2) {
-            return false;
-        }
-
-        return TxSupport.isActive(parts[1]);
+        
+        return updateParticipantTerminationUrl(participantUrl, recoveryUrl);
     }
 }
