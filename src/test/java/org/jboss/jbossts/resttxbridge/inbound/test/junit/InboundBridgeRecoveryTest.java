@@ -28,6 +28,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
+ * TODO Implement tests with assertions and coverage of more crash scenarios.
  * 
  * @author Gytis Trikleris
  * 
@@ -117,6 +118,11 @@ public class InboundBridgeRecoveryTest {
         }
     }
 
+    /**
+     * TODO Complete implementation
+     * 
+     * @throws Exception
+     */
     @Test
     public void testCrashWithThreeLogEntries() throws Exception {
         System.out.println("===== testCrashWithThreeLogEntries =====");
@@ -172,6 +178,11 @@ public class InboundBridgeRecoveryTest {
         controller.kill(CONTAINER_NAME);
     }
     
+    /**
+     * TODO Complete implementation
+     * 
+     * @throws Exception
+     */
     @Test
     public void testCrashWithTwoLogEntries() throws Exception {
         System.out.println("===== testCrashWithTwoLogEntries =====");
