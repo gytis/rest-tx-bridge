@@ -56,6 +56,12 @@
       <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>2.12</version>
+        <configuration>
+          <excludes>
+            <!-- Recovery tests are not completely implemented, so just skip them for now -->
+            <exclude>**/InboundBridgeRecoveryTest.java</exclude>
+          </excludes>
+        </configuration>
       </plugin>
     </plugins>
   </build>
