@@ -1,20 +1,20 @@
 Rest TX Bridge
 ======================================================
 Author: Gytis Trikleris (gytist@gmail.com)
-Technologies: Rest TX Bridge
+Technologies: REST-AT Bridge
 
 What is it?
 -----------
-Bridge between rest-tx and JPA transactions.
+Bridge between REST-AT and JTA transactions.
 
 Build and Deploy
 -------------------------
 
-1. Download and deploy rest-tx coordinator (https://github.com/jbosstm/narayana/tree/master/rest-tx).
+1. Download and build rest-tx coordinator (https://github.com/jbosstm/narayana/tree/master/rest-tx).
 
-2. Make sure that "org.jboss.narayana.rts:restat-util:5.0.0.M2-SNAPSHOT" artifact is in your local Maven repository (comes from 1 step).
+      mvn clean install
 
-3. Set correct value for jbossHome property in Arquillian configuration file:
+2. Set correct value for jbossHome property in Arquillian configuration file:
 
         src/test/resources/arquillian.xml
 		
@@ -23,3 +23,9 @@ Build and Deploy
         mvn clean install
 
 5. Arquillian test will be executed and output will be printed to the console. If everything went successfully code will be stored in your local Maven repository.
+
+6. In order to make use of the bridge in other projects (e.g. quickstarts), please copy rest-tx-bridge.jar, restat-util-XXX.jar (created in step 1), and module.xml to
+
+        $JBOSS_HOME/modules/org/jboss/rts/main
+        
+7. If version of the restat-util-XXX.jar is not 5.0.0.M2-SNAPSHOT, please update the module.xml with correct version. 
